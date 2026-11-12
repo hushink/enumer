@@ -56,6 +56,63 @@ func TestJSONDiagnostics(t *testing.T) {
 	require.Contains(t, stdout.String(), `"code": "unknown-field"`)
 }
 
+func TestInitExistingFile(t *testing.T) {
+	dir := t.TempDir()
+	t.Chdir(dir)
+	require.NoError(t, os.WriteFile("enumer.yaml", []byte("version: 1\n"), 0o644))
+
+	var stdout, stderr bytes.Buffer
+	code := Execute([]string{"init"}, &stdout, &stderr)
+	require.Equal(t, 1, code)
+	require.Contains(t, stderr.String(), "already exists")
+
+	stdout.Reset()
+	stderr.Reset()
+	code = Execute([]string{"init", "--force", "--package", "sample"}, &stdout, &stderr)
+	require.Equal(t, 0, code, stderr.String())
+}
+
+func TestDryRunDoesNotWrite(t *testing.T) {
+	dir := t.TempDir()
+	t.Chdir(dir)
+	require.NoError(t, os.WriteFile("enumer.yaml", []byte(`version: 1
+package: p
+enums:
+  - name: Color
+    values: [red]
+`), 0o644))
+
+	var stdout, stderr bytes.Buffer
+	code := Execute([]string{"generate", "--dry-run"}, &stdout, &stderr)
+	require.Equal(t, 0, code, stderr.String())
+	require.Contains(t, stderr.String(), "would write")
+
+	_, err := os.Stat("color_enum.go")
+	require.True(t, os.IsNotExist(err))
+}
+
+func TestCheckJSONStale(t *testing.T) {
+	dir := t.TempDir()
+	t.Chdir(dir)
+	require.NoError(t, os.WriteFile("enumer.yaml", []byte(`version: 1
+package: p
+enums:
+  - name: Color
+    values: [red]
+`), 0o644))
+
+	var stdout, stderr bytes.Buffer
+	code := Execute([]string{"generate"}, &stdout, &stderr)
+	require.Equal(t, 0, code, stderr.String())
+	require.NoError(t, os.WriteFile("color_enum.go", []byte("// drift\n"), 0o644))
+
+	stdout.Reset()
+	stderr.Reset()
+	code = Execute([]string{"--json", "check"}, &stdout, &stderr)
+	require.Equal(t, 1, code)
+	require.Contains(t, stdout.String(), `"code": "stale-output"`)
+}
+
 func TestStrictWarnings(t *testing.T) {
 	dir := t.TempDir()
 	t.Chdir(dir)

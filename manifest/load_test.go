@@ -381,6 +381,21 @@ enums:
 	require.Equal(t, "bar", m.Enums[1].Package)
 }
 
+func TestLoadAggregateRejectsPerEnumOutput(t *testing.T) {
+	dir := t.TempDir()
+	path := writeManifest(t, dir, `version: 1
+package: p
+aggregate: true
+enums:
+  - name: A
+    output: a.go
+    values: [x]
+`)
+	_, diags := Load(path)
+	require.True(t, diags.HasErrors())
+	require.Contains(t, diags.Format(), "cannot be set when aggregate is true")
+}
+
 func TestLoadOutputOverride(t *testing.T) {
 	dir := t.TempDir()
 	path := writeManifest(t, dir, `version: 1

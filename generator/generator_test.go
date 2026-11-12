@@ -243,6 +243,33 @@ enums:
 	require.FileExists(t, filepath.Join(dir2, "color_enum.go"))
 }
 
+func TestPackageMismatchInDirectory(t *testing.T) {
+	dir := t.TempDir()
+	path1 := filepath.Join(dir, "a.yaml")
+	path2 := filepath.Join(dir, "b.yaml")
+	require.NoError(t, os.WriteFile(path1, []byte(`version: 1
+package: p
+enums:
+  - name: A
+    values: [x]
+`), 0o644))
+	require.NoError(t, os.WriteFile(path2, []byte(`version: 1
+package: q
+enums:
+  - name: B
+    values: [y]
+`), 0o644))
+
+	m1, diags1 := manifest.Load(path1)
+	require.False(t, diags1.HasErrors(), diags1.Format())
+	m2, diags2 := manifest.Load(path2)
+	require.False(t, diags2.HasErrors(), diags2.Format())
+
+	_, gdiags := New().Generate(context.Background(), []*model.Manifest{m1, m2}, GenerateOptions{})
+	require.True(t, gdiags.HasErrors())
+	require.Contains(t, gdiags.Format(), "contains both package")
+}
+
 func TestOutputCollision(t *testing.T) {
 	m, _ := loadOne(t, `version: 1
 package: sample
