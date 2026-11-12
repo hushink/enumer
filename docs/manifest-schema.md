@@ -279,6 +279,10 @@ See [examples/flags](../examples/flags) for a runnable example.
 - Generated symbols are checked per package: type names, constant names,
   `Parse…`, `ErrInvalid…`, `Null…`, `…Names`, `…Values` and private generated
   identifiers must not collide.
+- Generated `.go` files carrying this manifest's exact header that are no
+  longer planned are pruned on `generate`. Hand-written files, files from other
+  manifests and custom target outputs are never pruned. `--no-prune` disables
+  pruning; `check` reports orphans as stale.
 
 ## Validation rules
 

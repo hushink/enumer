@@ -32,7 +32,7 @@ func runGenerate(cmd *cobra.Command, args []string, g *globalOptions, stdout, st
 		return reportDiagnostics(diags, g, stdout, stderr)
 	}
 
-	result, gdiags := newGenerator().Generate(cmd.Context(), manifests, generator.GenerateOptions{DryRun: dryRun})
+	result, gdiags := newGenerator().Generate(cmd.Context(), manifests, generator.GenerateOptions{DryRun: dryRun, NoPrune: g.noPrune})
 	diags = append(diags, gdiags...)
 	if err := reportDiagnostics(diags, g, stdout, stderr); err != nil {
 		return err
@@ -45,6 +45,11 @@ func runGenerate(cmd *cobra.Command, args []string, g *globalOptions, stdout, st
 		for _, output := range result.Outputs {
 			fmt.Fprintf(stderr, "would write %s\n", output.Path)
 		}
+		if !g.noPrune {
+			for _, path := range result.Orphans {
+				fmt.Fprintf(stderr, "would remove %s\n", path)
+			}
+		}
 		return nil
 	}
 	if g.verbose {
@@ -53,6 +58,9 @@ func runGenerate(cmd *cobra.Command, args []string, g *globalOptions, stdout, st
 		}
 		for _, path := range result.Unchanged {
 			fmt.Fprintf(stderr, "unchanged %s\n", path)
+		}
+		for _, path := range result.Removed {
+			fmt.Fprintf(stderr, "removed %s\n", path)
 		}
 	}
 	return nil

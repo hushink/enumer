@@ -127,6 +127,14 @@ output: enums_enum.go
 Aggregate manifests require one package across all enums and forbid per-enum
 `output`.
 
+## Pruning removed enums
+
+Removing an enum from the manifest removes its old generated `.go` file on the
+next `enumer generate`. Only files carrying the manifest's exact generated
+header are pruned; hand-written files, files from other manifests and custom
+target outputs are never touched. `enumer check` reports orphaned generated
+files as stale, and `--no-prune` disables pruning.
+
 ## Comments
 
 ```yaml

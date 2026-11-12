@@ -17,8 +17,8 @@ set of opt-in methods.
   with `text/template`.
 - **Strict, structured diagnostics** — every error carries a file position and a
   stable code; `--json` for CI.
-- **Idempotent output** — atomic writes, unchanged files are not rewritten, and
-  `enumer check` catches drift.
+- **Idempotent output** — atomic writes, unchanged files are not rewritten,
+  removed enums are pruned, and `enumer check` catches drift.
 
 ## Install
 
@@ -378,6 +378,7 @@ Global flags:
 - `--strict` — treat warnings as errors.
 - `--json` — print diagnostics as a JSON report.
 - `-v`, `--verbose` — print written and unchanged files.
+- `--no-prune` — keep generated files for enums that are no longer declared.
 
 `generate` also accepts `--dry-run`. `check` accepts `--diff` to print unified
 diffs for stale outputs. `init` accepts `--package` and `--force`.
@@ -387,6 +388,16 @@ Exit codes:
 - `0` success.
 - `1` validation or generation failure, or stale output from `check`.
 - `2` command line usage error.
+
+## Pruning
+
+`enumer generate` removes generated `.go` files that carry the exact generated
+header for the current manifest but are no longer produced. Removing an enum
+from `enumer.yaml` therefore removes its old `_enum.go` file on the next run.
+
+The match is deliberately strict: hand-written files, files generated from
+other manifests and custom target outputs are never pruned. `enumer check`
+reports orphaned generated files as stale. Use `--no-prune` to keep them.
 
 ## Custom targets
 

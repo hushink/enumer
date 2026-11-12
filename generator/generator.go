@@ -46,6 +46,8 @@ func (g *Generator) Registry() *Registry { return g.registry }
 type GenerateOptions struct {
 	// DryRun plans outputs without writing them.
 	DryRun bool
+	// NoPrune keeps generated files for enums that are no longer declared.
+	NoPrune bool
 }
 
 // CheckOptions controls Check.
@@ -73,6 +75,10 @@ type Result struct {
 	Outputs   []Output
 	Changed   []string
 	Unchanged []string
+	// Orphans are generated files for enums no longer declared by a manifest.
+	Orphans []string
+	// Removed is the subset of Orphans deleted in this run.
+	Removed []string
 }
 
 // Diff is one stale output.
@@ -87,6 +93,8 @@ type CheckResult struct {
 	Outputs []Output
 	Stale   []string
 	Diffs   []Diff
+	// Orphans are generated files for enums no longer declared by a manifest.
+	Orphans []string
 }
 
 // Generate plans and writes every output.
@@ -95,9 +103,22 @@ func (g *Generator) Generate(ctx context.Context, manifests []*model.Manifest, o
 	if diags.HasErrors() {
 		return nil, diags
 	}
-	result := &Result{Outputs: outputs}
+	orphans := findOrphans(manifests, outputs)
+	result := &Result{Outputs: outputs, Orphans: orphans}
 	if opts.DryRun {
 		return result, diags
+	}
+	if !opts.NoPrune {
+		for _, path := range orphans {
+			if err := os.Remove(path); err != nil {
+				if os.IsNotExist(err) {
+					continue
+				}
+				diags = append(diags, errDiag("remove-error", err.Error(), path, 0, 0, ""))
+				return result, diags
+			}
+			result.Removed = append(result.Removed, path)
+		}
 	}
 	for _, output := range outputs {
 		changed, err := sink.Write(output.Path, output.Content)
@@ -121,7 +142,16 @@ func (g *Generator) Check(ctx context.Context, manifests []*model.Manifest, opts
 	if diags.HasErrors() {
 		return nil, diags
 	}
-	result := &CheckResult{Outputs: outputs}
+	result := &CheckResult{Outputs: outputs, Orphans: findOrphans(manifests, outputs)}
+	for _, path := range result.Orphans {
+		result.Stale = append(result.Stale, path)
+		diags = append(diags, errDiag("stale-output", "generated file is no longer declared by the manifest", path, 0, 0, ""))
+		if opts.Diff {
+			if old, err := os.ReadFile(path); err == nil {
+				result.Diffs = append(result.Diffs, Diff{Path: path, Old: old})
+			}
+		}
+	}
 	for _, output := range outputs {
 		old, err := os.ReadFile(output.Path)
 		if os.IsNotExist(err) {

@@ -124,6 +124,69 @@ enums:
 	require.Contains(t, stdout.String(), `"code": "stale-output"`)
 }
 
+func TestGeneratePrunesRemovedEnums(t *testing.T) {
+	dir := t.TempDir()
+	t.Chdir(dir)
+	require.NoError(t, os.WriteFile("enumer.yaml", []byte(`version: 1
+package: p
+enums:
+  - name: Color
+    values: [red]
+  - name: Status
+    type: int
+    values: [pending]
+`), 0o644))
+
+	var stdout, stderr bytes.Buffer
+	code := Execute([]string{"generate"}, &stdout, &stderr)
+	require.Equal(t, 0, code, stderr.String())
+	require.FileExists(t, "status_enum.go")
+
+	require.NoError(t, os.WriteFile("enumer.yaml", []byte(`version: 1
+package: p
+enums:
+  - name: Color
+    values: [red]
+`), 0o644))
+	stdout.Reset()
+	stderr.Reset()
+	code = Execute([]string{"generate"}, &stdout, &stderr)
+	require.Equal(t, 0, code, stderr.String())
+	_, err := os.Stat("status_enum.go")
+	require.True(t, os.IsNotExist(err))
+}
+
+func TestNoPruneFlag(t *testing.T) {
+	dir := t.TempDir()
+	t.Chdir(dir)
+	require.NoError(t, os.WriteFile("enumer.yaml", []byte(`version: 1
+package: p
+enums:
+  - name: Color
+    values: [red]
+  - name: Status
+    type: int
+    values: [pending]
+`), 0o644))
+
+	var stdout, stderr bytes.Buffer
+	code := Execute([]string{"generate"}, &stdout, &stderr)
+	require.Equal(t, 0, code, stderr.String())
+	require.FileExists(t, "status_enum.go")
+
+	require.NoError(t, os.WriteFile("enumer.yaml", []byte(`version: 1
+package: p
+enums:
+  - name: Color
+    values: [red]
+`), 0o644))
+	stdout.Reset()
+	stderr.Reset()
+	code = Execute([]string{"generate", "--no-prune"}, &stdout, &stderr)
+	require.Equal(t, 0, code, stderr.String())
+	require.FileExists(t, "status_enum.go")
+}
+
 func TestStrictWarnings(t *testing.T) {
 	dir := t.TempDir()
 	t.Chdir(dir)

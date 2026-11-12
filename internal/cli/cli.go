@@ -55,6 +55,7 @@ type globalOptions struct {
 	strict  bool
 	json    bool
 	verbose bool
+	noPrune bool
 }
 
 // NewRootCmd builds the command tree.
@@ -82,6 +83,7 @@ Run "enumer" without a subcommand to generate from the current directory.`,
 	root.PersistentFlags().BoolVar(&g.strict, "strict", false, "treat warnings as errors")
 	root.PersistentFlags().BoolVar(&g.json, "json", false, "print diagnostics as JSON")
 	root.PersistentFlags().BoolVarP(&g.verbose, "verbose", "v", false, "print generated file details")
+	root.PersistentFlags().BoolVar(&g.noPrune, "no-prune", false, "keep generated files for enums no longer declared")
 
 	root.AddCommand(
 		newGenerateCmd(g, stdout, stderr),

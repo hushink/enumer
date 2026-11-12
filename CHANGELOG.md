@@ -33,6 +33,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CLI commands: `generate`, `check --diff`, `init`, `version`.
 - Strict validation with positioned diagnostics, `--json` output and `--strict`.
 - Atomic writes and idempotent output; unchanged files are not rewritten.
+- Prune generated files for enums removed from a manifest. Only files with the
+  manifest's exact generated header are removed; `--no-prune` keeps them and
+  `check` reports orphans as stale.
 - Custom `text/template` targets, including per-enum targets.
 - Golden, compile/behavior, CLI integration, fuzz and race tests.
 - README, configuration guide and manifest schema in English and Simplified
