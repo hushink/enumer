@@ -1,0 +1,19 @@
+version: 1
+package: aggregate
+
+aggregate: true
+output: enums_enum.go
+
+defaults:
+  naming:
+    extraInitialisms: [OK]
+
+enums:
+  - name: Method
+    type: string
+    values: [get, post, put, delete]
+
+  - name: Status
+    type: int
+    start: 100
+    values: [continue, ok, created, accepted]

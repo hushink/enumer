@@ -1,5 +1,8 @@
 # enumer
 
+[![CI](https://github.com/hushink/enumer/actions/workflows/ci.yml/badge.svg)](https://github.com/hushink/enumer/actions/workflows/ci.yml)
+[![Go Reference](https://pkg.go.dev/badge/github.com/hushink/enumer.svg)](https://pkg.go.dev/github.com/hushink/enumer)
+
 `enumer` generates type-safe Go enumerations from a YAML manifest. Declare the
 type, values and settings once, and get the type declaration, constants and a
 set of opt-in methods.
@@ -336,6 +339,13 @@ g := generator.New(generator.WithRegistry(registry))
 
 The trade-off is that the generated file owns the type declaration: do not
 declare the same type manually in Go source.
+
+## Examples
+
+- [examples/basic](examples/basic) — string and numeric enums, JSON, SQL,
+  flag, names, values and a Markdown custom target.
+- [examples/aggregate](examples/aggregate) — two enums in one generated file
+  with a custom initialism.
 
 ## Design docs
 
