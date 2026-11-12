@@ -1,0 +1,11 @@
+{
+  "$schema": "https://skills.sh/schemas/skills.sh.schema.json",
+  "notGrouped": "bottom",
+  "groupings": [
+    {
+      "title": "Go enums",
+      "description": "Generate and maintain type-safe Go enumerations from an enumer.yaml manifest.",
+      "skills": ["enumer"]
+    }
+  ]
+}

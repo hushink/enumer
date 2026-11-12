@@ -441,6 +441,18 @@ go generate ./...
 - 三方声明见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 - CI 使用 `govulncheck` 检查已知漏洞。
 
+## Agent 技能
+
+本仓库附带一个 [Agent Skill](https://skills.sh)，用于指导编码助手正确使用
+`enumer`。安装：
+
+```sh
+npx skills add hushink/enumer --skill enumer
+```
+
+技能位于 [skills/enumer/SKILL.md](skills/enumer/SKILL.md)，并附带清单、能力、
+CLI 与常见用法参考。
+
 ## 示例
 
 - [examples/basic](examples/basic) —— 字符串/数字枚举、JSON、SQL、flag、

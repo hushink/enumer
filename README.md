@@ -488,6 +488,18 @@ g := generator.New(generator.WithRegistry(registry))
 The trade-off is that the generated file owns the type declaration: do not
 declare the same type manually in Go source.
 
+## Agent skill
+
+This repository ships an [Agent Skill](https://skills.sh) that teaches coding
+assistants to use `enumer` correctly. Install it with:
+
+```sh
+npx skills add hushink/enumer --skill enumer
+```
+
+The skill lives in [skills/enumer/SKILL.md](skills/enumer/SKILL.md) and bundles
+references for the manifest, features, CLI and common recipes.
+
 ## Examples
 
 - [examples/basic](examples/basic) — string and numeric enums, JSON, SQL,

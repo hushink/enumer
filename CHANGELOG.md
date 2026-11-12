@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- An Agent Skill (`skills/enumer/`) compatible with skills.sh and the Agent
+  Skills specification, with references for the manifest, features, CLI and
+  recipes, plus `skills.sh.json` catalog metadata and README install
+  instructions.
 - YAML manifest as the single source of truth for type declarations, values and
   settings.
 - String and integer enums (`int`, `int8`…`int64`, `uint`, `uint8`…`uint64`).
