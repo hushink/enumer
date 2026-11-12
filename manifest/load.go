@@ -65,7 +65,16 @@ func Load(path string) (*model.Manifest, diag.List) {
 		return nil, diag.List{errDiag("unsupported-version", fmt.Sprintf("unsupported manifest version %d; supported version is 1", version), display, 1, 0, "", "")}
 	}
 
-	defaults, diags := resolveDefaults(&schema.Defaults, display)
+	var diags diag.List
+	if schema.Extends != "" {
+		baseDefaults, baseDiags := loadExtendedDefaults(schema.Extends, dir, map[string]bool{abs: true})
+		diags = append(diags, baseDiags...)
+		if !baseDiags.HasErrors() {
+			schema.Defaults = mergeDefaults(baseDefaults, schema.Defaults)
+		}
+	}
+	defaults, ddiags := resolveDefaults(&schema.Defaults, display)
+	diags = append(diags, ddiags...)
 
 	pkg, pkgDiags := resolvePackage(schema.Package, dir, display)
 	if schema.Package == "" && pkg == "" && allEnumsHavePackage(schema.Enums) {

@@ -133,6 +133,7 @@ and an optional list of custom targets. See
 
 ```yaml
 version: 1
+# extends: ../base.yaml # optional shared defaults
 
 package: example       # optional when the directory already has Go files
 
@@ -180,6 +181,34 @@ enums:
 Value names are converted to Go identifiers. `http_status` becomes
 `ColorHTTPStatus` by default; `blue-green` becomes `ColorBlueGreen`. The
 canonical text stays exactly as written unless a string enum supplies `value`.
+
+### Shared defaults
+
+Use `extends` to inherit `defaults` from a base YAML file:
+
+```yaml
+# base.yaml
+version: 1
+defaults:
+  features: [string, parse, valid, text]
+  naming:
+    prefix: type
+```
+
+```yaml
+# color/enumer.yaml
+version: 1
+package: color
+extends: ../base.yaml
+enums:
+  - name: Color
+    values: [red, green, blue]
+```
+
+Only `defaults` is inherited; the base's `enums`, `targets`, `package`,
+`aggregate` and `output` are ignored. Nested `naming`, `parse` and `output`
+fields merge individually, lists such as `features` replace the inherited list,
+and `features: []` clears it. Cycles are errors.
 
 ### Existing types
 
@@ -377,6 +406,8 @@ declare the same type manually in Go source.
 - [examples/yaml](examples/yaml) — YAML marshaling with the `yaml` feature.
 - [examples/existing](examples/existing) — `typeMode: existing` with a
   hand-written type declaration.
+- [examples/extends](examples/extends) — two packages sharing defaults through
+  `extends`.
 
 ## Design docs
 

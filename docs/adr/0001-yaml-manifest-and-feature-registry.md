@@ -34,5 +34,7 @@ capabilities grow without touching the renderer.
   validated and preserve source locations for diagnostics.
 - Adding a capability only requires registering a Feature; adding an artifact
   only requires a template. The renderer stays unchanged.
+- Manifests may inherit `defaults` from a base manifest through `extends`;
+  enums, targets, package and output are never inherited.
 - The generator has no dependency on Go package loading;
   `golang.org/x/tools` is not a dependency.

@@ -11,6 +11,7 @@ import (
 // from an explicit zero value.
 type fileSchema struct {
 	Version   int            `yaml:"version"`
+	Extends   string         `yaml:"extends"`
 	Package   string         `yaml:"package"`
 	Aggregate bool           `yaml:"aggregate"`
 	Output    string         `yaml:"output"`

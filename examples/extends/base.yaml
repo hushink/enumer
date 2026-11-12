@@ -1,0 +1,11 @@
+version: 1
+
+defaults:
+  features: [string, parse, valid, text, names, values]
+  naming:
+    prefix: type
+    identifier: camel
+  parse:
+    caseSensitive: true
+  output:
+    suffix: _enum.go

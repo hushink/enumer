@@ -12,6 +12,7 @@ invalid values are reported with a file position and a stable diagnostic code.
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
 | `version` | integer | `1` | Manifest schema version. Only `1` is supported. |
+| `extends` | string | `""` | Path to a base manifest whose `defaults` are inherited. Only `defaults` is inherited. |
 | `package` | string | inferred | Go package name. Inferred from the directory's Go files when omitted; required when the directory has no Go files. |
 | `aggregate` | bool | `false` | Emit all enums of this manifest into one file. |
 | `output` | string | derived | Aggregate output path. Only valid when `aggregate` is true. Must be relative to the manifest directory. |
@@ -108,6 +109,48 @@ Template functions:
 | `join` | `{{ join ", " .Names }}` or `{{ .Names \| join ", " }}`. |
 | `json`, `jsonPretty` | JSON encoding. |
 | `default` | `{{ default "none" .Enum.Doc }}`; returns the fallback for zero values. |
+
+## Shared defaults with extends
+
+`extends` points to another YAML manifest and inherits its `defaults`:
+
+```yaml
+# base.yaml
+version: 1
+defaults:
+  features: [string, parse, valid, text]
+  naming:
+    prefix: type
+    identifier: camel
+```
+
+```yaml
+# color/enumer.yaml
+version: 1
+package: color
+extends: ../base.yaml
+
+defaults:
+  naming:
+    identifier: camel
+
+enums:
+  - name: Color
+    values: [red, green, blue]
+```
+
+Merge rules:
+
+- Only `defaults` is inherited. `package`, `aggregate`, `output`, `enums` and
+  `targets` in the base are ignored.
+- Nested `naming`, `parse` and `output` fields merge individually; unspecified
+  child fields keep the inherited value.
+- Lists such as `features` replace the inherited list. `features: []` clears it;
+  omitted `features` inherits the base list.
+- `extends` chains are resolved recursively and cycles are errors.
+- Base files are not discovered by `./...` unless they are named `enumer.yaml`.
+
+See [examples/extends](../examples/extends) for a runnable example.
 
 ## Existing types
 

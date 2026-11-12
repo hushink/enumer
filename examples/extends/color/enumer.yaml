@@ -1,0 +1,8 @@
+version: 1
+package: color
+extends: ../base.yaml
+
+enums:
+  - name: Color
+    type: string
+    values: [red, green, blue]

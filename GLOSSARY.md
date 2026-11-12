@@ -74,3 +74,7 @@ _Avoid_: override rules, special case
 Whether generated code declares the enum type (`emit`) or references a
 hand-written declaration (`existing`).
 _Avoid_: type source, declaration mode
+
+**Base Defaults**:
+Defaults inherited from the manifest referenced by `extends`.
+_Avoid_: global config, inherited manifest

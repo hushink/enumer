@@ -1,0 +1,9 @@
+version: 1
+package: status
+extends: ../base.yaml
+
+enums:
+  - name: Status
+    type: int
+    features: [json:number]
+    values: [pending, running, done]
