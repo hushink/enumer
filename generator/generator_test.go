@@ -190,6 +190,26 @@ enums:
 	require.NotContains(t, string(content), "is an enumeration")
 }
 
+func TestExistingTypeModeSkipsTypeDeclaration(t *testing.T) {
+	m, dir := loadOne(t, `version: 1
+package: sample
+defaults:
+  typeMode: existing
+enums:
+  - name: Color
+    type: string
+    values: [red, green]
+`)
+	_, diags := New().Generate(context.Background(), []*model.Manifest{m}, GenerateOptions{})
+	require.False(t, diags.HasErrors(), diags.Format())
+
+	content, err := os.ReadFile(filepath.Join(dir, "color_enum.go"))
+	require.NoError(t, err)
+	require.NotContains(t, string(content), "type Color string")
+	require.Contains(t, string(content), `ColorRed Color = "red"`)
+	require.Contains(t, string(content), "func ParseColor")
+}
+
 func TestFeatureError(t *testing.T) {
 	m, _ := loadOne(t, `version: 1
 package: sample

@@ -20,20 +20,21 @@ type fileSchema struct {
 }
 
 type defaultsSchema struct {
-	Features             []string     `yaml:"features"`
-	DisableFeatures      []string     `yaml:"disableFeatures"`
-	Naming               namingSchema `yaml:"naming"`
-	Parse                parseSchema  `yaml:"parse"`
-	Output               outputSchema `yaml:"output"`
-	Comments             string       `yaml:"comments"`
-	AllowDuplicateValues bool         `yaml:"allowDuplicateValues"`
+	Features             *[]string     `yaml:"features"`
+	DisableFeatures      *[]string     `yaml:"disableFeatures"`
+	Naming               *namingSchema `yaml:"naming"`
+	Parse                *parseSchema  `yaml:"parse"`
+	Output               *outputSchema `yaml:"output"`
+	Comments             *string       `yaml:"comments"`
+	AllowDuplicateValues *bool         `yaml:"allowDuplicateValues"`
+	TypeMode             *string       `yaml:"typeMode"`
 }
 
 type namingSchema struct {
-	Prefix             string   `yaml:"prefix"`
-	Identifier         string   `yaml:"identifier"`
-	ExtraInitialisms   []string `yaml:"extraInitialisms"`
-	DisableInitialisms bool     `yaml:"disableInitialisms"`
+	Prefix             *string   `yaml:"prefix"`
+	Identifier         *string   `yaml:"identifier"`
+	ExtraInitialisms   *[]string `yaml:"extraInitialisms"`
+	DisableInitialisms *bool     `yaml:"disableInitialisms"`
 }
 
 type parseSchema struct {
@@ -41,8 +42,8 @@ type parseSchema struct {
 }
 
 type outputSchema struct {
-	Suffix string `yaml:"suffix"`
-	Dir    string `yaml:"dir"`
+	Suffix *string `yaml:"suffix"`
+	Dir    *string `yaml:"dir"`
 }
 
 type enumSchema struct {
@@ -53,6 +54,7 @@ type enumSchema struct {
 	Output               string        `yaml:"output"`
 	Features             []string      `yaml:"features"`
 	DisableFeatures      []string      `yaml:"disableFeatures"`
+	TypeMode             string        `yaml:"typeMode"`
 	Start                *numberScalar `yaml:"start"`
 	AllowDuplicateValues *bool         `yaml:"allowDuplicateValues"`
 	Values               []valueSchema `yaml:"values"`

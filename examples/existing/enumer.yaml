@@ -1,0 +1,10 @@
+version: 1
+package: existing
+
+defaults:
+  typeMode: existing
+
+enums:
+  - name: Color
+    type: string
+    values: [red, green, blue]

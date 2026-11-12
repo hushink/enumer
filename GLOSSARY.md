@@ -69,3 +69,8 @@ _Avoid_: global config, base config
 **Enum Settings**:
 Fields on one enum entry that override the defaults.
 _Avoid_: override rules, special case
+
+**Type Mode**:
+Whether generated code declares the enum type (`emit`) or references a
+hand-written declaration (`existing`).
+_Avoid_: type source, declaration mode

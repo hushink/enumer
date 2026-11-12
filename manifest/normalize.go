@@ -24,6 +24,7 @@ type resolvedDefaults struct {
 	dir                  string
 	comments             model.CommentsMode
 	allowDuplicateValues bool
+	typeMode             model.TypeMode
 }
 
 func resolveDefaults(ds *defaultsSchema, display string) (resolvedDefaults, diag.List) {
@@ -35,68 +36,107 @@ func resolveDefaults(ds *defaultsSchema, display string) (resolvedDefaults, diag
 		caseSensitive: true,
 		suffix:        "_enum.go",
 		comments:      model.CommentsAuto,
+		typeMode:      model.TypeModeEmit,
 	}
 	var diags diag.List
 
-	if len(ds.Features) > 0 {
-		d.features = append([]string(nil), ds.Features...)
+	if ds.Features != nil {
+		d.features = append([]string(nil), (*ds.Features)...)
 	}
-	d.disabled = append([]string(nil), ds.DisableFeatures...)
+	if ds.DisableFeatures != nil {
+		d.disabled = append([]string(nil), (*ds.DisableFeatures)...)
+	}
 
+	var prefix string
+	if ds.Naming != nil && ds.Naming.Prefix != nil {
+		prefix = *ds.Naming.Prefix
+	}
 	switch {
-	case ds.Naming.Prefix == "" || ds.Naming.Prefix == "type":
+	case prefix == "" || prefix == "type":
 		d.prefixMode = "type"
-	case ds.Naming.Prefix == "none":
+	case prefix == "none":
 		d.prefixMode = "none"
-	case strings.HasPrefix(ds.Naming.Prefix, "literal:"):
+	case strings.HasPrefix(prefix, "literal:"):
 		d.prefixMode = "literal"
-		d.prefixValue = strings.TrimPrefix(ds.Naming.Prefix, "literal:")
+		d.prefixValue = strings.TrimPrefix(prefix, "literal:")
 		if d.prefixValue == "" {
 			diags = append(diags, errDiag("invalid-naming", "literal prefix must not be empty", display, 1, 0, "", ""))
 		}
 	default:
-		diags = append(diags, errDiag("invalid-naming", fmt.Sprintf("unknown prefix %q; use type, none or literal:<prefix>", ds.Naming.Prefix), display, 1, 0, "", ""))
+		diags = append(diags, errDiag("invalid-naming", fmt.Sprintf("unknown prefix %q; use type, none or literal:<prefix>", prefix), display, 1, 0, "", ""))
 	}
 
-	switch ds.Naming.Identifier {
+	var identifier string
+	var extraInitialisms []string
+	var disableInitialisms bool
+	if ds.Naming != nil {
+		if ds.Naming.Identifier != nil {
+			identifier = *ds.Naming.Identifier
+		}
+		if ds.Naming.ExtraInitialisms != nil {
+			extraInitialisms = *ds.Naming.ExtraInitialisms
+		}
+		if ds.Naming.DisableInitialisms != nil {
+			disableInitialisms = *ds.Naming.DisableInitialisms
+		}
+	}
+	switch identifier {
 	case "", "camel":
 		d.identifier = model.IdentifierCamel
 	case "raw":
 		d.identifier = model.IdentifierRaw
 	default:
-		diags = append(diags, errDiag("invalid-naming", fmt.Sprintf("unknown identifier style %q; use camel or raw", ds.Naming.Identifier), display, 1, 0, "", ""))
+		diags = append(diags, errDiag("invalid-naming", fmt.Sprintf("unknown identifier style %q; use camel or raw", identifier), display, 1, 0, "", ""))
 	}
+	d.initialisms = naming.InitialismSet(extraInitialisms, disableInitialisms)
 
-	d.initialisms = naming.InitialismSet(ds.Naming.ExtraInitialisms, ds.Naming.DisableInitialisms)
-
-	if ds.Parse.CaseSensitive != nil {
+	if ds.Parse != nil && ds.Parse.CaseSensitive != nil {
 		d.caseSensitive = *ds.Parse.CaseSensitive
 	}
 
-	if ds.Output.Suffix != "" {
-		d.suffix = ds.Output.Suffix
-		if !strings.HasSuffix(d.suffix, ".go") {
-			d.suffix += ".go"
+	if ds.Output != nil {
+		if ds.Output.Suffix != nil && *ds.Output.Suffix != "" {
+			d.suffix = *ds.Output.Suffix
+			if !strings.HasSuffix(d.suffix, ".go") {
+				d.suffix += ".go"
+			}
+		}
+		if ds.Output.Dir != nil {
+			switch {
+			case *ds.Output.Dir == "":
+				d.dir = ""
+			case filepath.IsAbs(*ds.Output.Dir):
+				diags = append(diags, errDiag("invalid-output", "output.dir must be relative", display, 1, 0, "", ""))
+			default:
+				d.dir = filepath.Clean(*ds.Output.Dir)
+			}
 		}
 	}
-	if ds.Output.Dir != "" {
-		if filepath.IsAbs(ds.Output.Dir) {
-			diags = append(diags, errDiag("invalid-output", "output.dir must be relative", display, 1, 0, "", ""))
+
+	if ds.Comments != nil {
+		switch *ds.Comments {
+		case "", "auto":
+			d.comments = model.CommentsAuto
+		case "none":
+			d.comments = model.CommentsNone
+		default:
+			diags = append(diags, errDiag("invalid-comments", fmt.Sprintf("unknown comments mode %q; use auto or none", *ds.Comments), display, 1, 0, "", ""))
+		}
+	}
+
+	if ds.AllowDuplicateValues != nil {
+		d.allowDuplicateValues = *ds.AllowDuplicateValues
+	}
+
+	if ds.TypeMode != nil {
+		mode, err := parseTypeMode(*ds.TypeMode)
+		if err != nil {
+			diags = append(diags, errDiag("invalid-type-mode", err.Error(), display, 1, 0, "", ""))
 		} else {
-			d.dir = filepath.Clean(ds.Output.Dir)
+			d.typeMode = mode
 		}
 	}
 
-	switch ds.Comments {
-	case "", "auto":
-		d.comments = model.CommentsAuto
-	case "none":
-		d.comments = model.CommentsNone
-	default:
-		diags = append(diags, errDiag("invalid-comments", fmt.Sprintf("unknown comments mode %q; use auto or none", ds.Comments), display, 1, 0, "", ""))
-	}
-
-	d.allowDuplicateValues = ds.AllowDuplicateValues
 	return d, diags
 }
 
@@ -109,6 +149,7 @@ func normalizeEnum(es *enumSchema, src model.Source, d resolvedDefaults, m *mode
 		CaseSensitive:        d.caseSensitive,
 		Comments:             d.comments,
 		AllowDuplicateValues: d.allowDuplicateValues,
+		TypeMode:             d.typeMode,
 	}
 
 	if es.Name == "" {
@@ -137,6 +178,15 @@ func normalizeEnum(es *enumSchema, src model.Source, d resolvedDefaults, m *mode
 		e.Package = es.Package
 	} else {
 		e.Package = m.Package
+	}
+
+	if es.TypeMode != "" {
+		mode, err := parseTypeMode(es.TypeMode)
+		if err != nil {
+			diags = append(diags, errDiag("invalid-type-mode", err.Error(), display, src.Line, src.Column, es.Name, ""))
+		} else {
+			e.TypeMode = mode
+		}
 	}
 
 	features, disabled, fdiags := mergeFeatures(d.features, es.Features, d.disabled, es.DisableFeatures, display, src, es.Name)
@@ -388,6 +438,17 @@ func normalizeValues(vs []valueSchema, e model.EnumSpec, display string) ([]mode
 	}
 
 	return values, diags
+}
+
+func parseTypeMode(s string) (model.TypeMode, error) {
+	switch s {
+	case "", "emit":
+		return model.TypeModeEmit, nil
+	case "existing":
+		return model.TypeModeExisting, nil
+	default:
+		return model.TypeModeEmit, fmt.Errorf("unknown typeMode %q; use emit or existing", s)
+	}
 }
 
 func enumConstName(e model.EnumSpec, name string) string {

@@ -26,8 +26,10 @@ capabilities grow without touching the renderer.
 
 ## Consequences
 
-- The tool generates the type declaration; users must not declare the same type
-  in Go source.
+- By default the tool generates the type declaration. `typeMode: existing`
+  lets users own the declaration while enumer generates constants and methods;
+  the Go compiler verifies that the type exists and matches. The generator still
+  does not load or type-check Go packages.
 - The YAML schema is a public contract and must be versioned, strictly
   validated and preserve source locations for diagnostics.
 - Adding a capability only requires registering a Feature; adding an artifact

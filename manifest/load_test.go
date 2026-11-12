@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hushink/enumer/model"
 	"github.com/stretchr/testify/require"
 )
 
@@ -394,6 +395,39 @@ enums:
 	_, diags := Load(path)
 	require.True(t, diags.HasErrors())
 	require.Contains(t, diags.Format(), "cannot be set when aggregate is true")
+}
+
+func TestLoadTypeMode(t *testing.T) {
+	dir := t.TempDir()
+	path := writeManifest(t, dir, `version: 1
+package: p
+defaults:
+  typeMode: existing
+enums:
+  - name: A
+    values: [x]
+  - name: B
+    typeMode: emit
+    values: [y]
+`)
+	m, diags := Load(path)
+	require.False(t, diags.HasErrors(), diags.Format())
+	require.Equal(t, model.TypeModeExisting, m.Enums[0].TypeMode)
+	require.Equal(t, model.TypeModeEmit, m.Enums[1].TypeMode)
+}
+
+func TestLoadTypeModeInvalid(t *testing.T) {
+	dir := t.TempDir()
+	path := writeManifest(t, dir, `version: 1
+package: p
+enums:
+  - name: A
+    typeMode: inline
+    values: [x]
+`)
+	_, diags := Load(path)
+	require.True(t, diags.HasErrors())
+	require.Contains(t, diags.Format(), "unknown typeMode")
 }
 
 func TestLoadOutputOverride(t *testing.T) {

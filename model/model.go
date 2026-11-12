@@ -169,6 +169,8 @@ type EnumSpec struct {
 	CaseSensitive bool
 	// Comments controls automatic documentation comments.
 	Comments CommentsMode
+	// TypeMode controls whether the generated file declares the type.
+	TypeMode TypeMode
 	// Values are the normalized values in declaration order.
 	Values []ValueSpec
 	// Output is the absolute output path when the enum is emitted alone.
@@ -198,6 +200,16 @@ type Naming struct {
 	// Initialisms is the set of words that keep their uppercase form.
 	Initialisms map[string]bool
 }
+
+// TypeMode controls whether the generated file declares the enum type.
+type TypeMode int
+
+const (
+	// TypeModeEmit emits the type declaration in the generated file.
+	TypeModeEmit TypeMode = iota
+	// TypeModeExisting references a type declared elsewhere in the package.
+	TypeModeExisting
+)
 
 // IdentifierStyle selects the value-name to identifier conversion.
 type IdentifierStyle int

@@ -93,12 +93,14 @@ func addImport(set map[string]model.Import, imp model.Import) error {
 func renderEnum(e *model.EnumSpec) string {
 	var b strings.Builder
 
-	doc := e.Doc
-	if doc == "" && e.Comments == model.CommentsAuto {
-		doc = fmt.Sprintf("%s is an enumeration of %s values.", e.Name, e.Type.Name)
+	if e.TypeMode != model.TypeModeExisting {
+		doc := e.Doc
+		if doc == "" && e.Comments == model.CommentsAuto {
+			doc = fmt.Sprintf("%s is an enumeration of %s values.", e.Name, e.Type.Name)
+		}
+		writeDoc(&b, "", doc)
+		fmt.Fprintf(&b, "type %s %s\n\n", e.Name, e.Type.Name)
 	}
-	writeDoc(&b, "", doc)
-	fmt.Fprintf(&b, "type %s %s\n\n", e.Name, e.Type.Name)
 
 	b.WriteString("const (\n")
 	for _, v := range e.Values {

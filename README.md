@@ -154,6 +154,7 @@ defaults:
     dir: ""
   comments: auto       # auto | none
   allowDuplicateValues: false
+  typeMode: emit       # emit | existing
 
 enums:
   - name: Color
@@ -179,6 +180,33 @@ enums:
 Value names are converted to Go identifiers. `http_status` becomes
 `ColorHTTPStatus` by default; `blue-green` becomes `ColorBlueGreen`. The
 canonical text stays exactly as written unless a string enum supplies `value`.
+
+### Existing types
+
+By default the generated file declares the type. Use `typeMode: existing` when
+the type is hand-written; enumer then emits only the constants and methods:
+
+```yaml
+defaults:
+  typeMode: existing
+
+enums:
+  - name: Color
+    type: string
+    values: [red, green, blue]
+```
+
+```go
+// types.go
+package example
+
+// Color is a hand-written type.
+type Color string
+```
+
+The hand-written type must live in the same package and use the declared
+underlying type. The Go compiler checks the match; enumer does not parse Go
+source.
 
 ### Types
 
@@ -347,6 +375,8 @@ declare the same type manually in Go source.
 - [examples/aggregate](examples/aggregate) — two enums in one generated file
   with a custom initialism.
 - [examples/yaml](examples/yaml) — YAML marshaling with the `yaml` feature.
+- [examples/existing](examples/existing) — `typeMode: existing` with a
+  hand-written type declaration.
 
 ## Design docs
 

@@ -23,7 +23,7 @@ invalid values are reported with a file position and a stable diagnostic code.
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
-| `features` | list of strings | `[string, parse, valid, text]` | Base feature set. An empty list means the built-in default set. |
+| `features` | list of strings | `[string, parse, valid, text]` | Base feature set. When omitted, the built-in default set is used; an explicit empty list disables all features. |
 | `disableFeatures` | list of strings | `[]` | Features removed from the base set. Disabling `sql` also removes `sql:int` and `sql:null`; disabling `json` also removes `json:number`. |
 | `naming.prefix` | string | `type` | `type` prefixes constants with the enum name; `none` uses no prefix; `literal:<text>` uses a fixed prefix. |
 | `naming.identifier` | string | `camel` | `camel` converts value names to CamelCase; `raw` uses the name unchanged and requires a valid Go identifier. |
@@ -34,6 +34,7 @@ invalid values are reported with a file position and a stable diagnostic code.
 | `output.dir` | string | `""` | Directory for per-enum output files, relative to the manifest directory. |
 | `comments` | string | `auto` | `auto` adds documentation comments when no user doc is present; `none` suppresses automatic comments but keeps user docs and deprecation notices. |
 | `allowDuplicateValues` | bool | `false` | Permit several names for the same numeric value. |
+| `typeMode` | string | `emit` | `emit` declares the enum type in the generated file; `existing` references a type declared by hand. |
 
 ## `enums`
 
@@ -46,6 +47,7 @@ invalid values are reported with a file position and a stable diagnostic code.
 | `output` | string | derived | Per-enum output path, relative to the manifest directory. Must end with `.go`. |
 | `features` | list of strings | `[]` | Features added to the resolved defaults. |
 | `disableFeatures` | list of strings | `[]` | Features removed from the resolved defaults. |
+| `typeMode` | string | inherited | Per-enum override of `defaults.typeMode`. |
 | `start` | integer | `0` | Initial value for numeric auto-incrementing. Not valid for string enums. |
 | `allowDuplicateValues` | bool | inherited | Per-enum override. |
 | `values` | list | required | At least one value. |
@@ -106,6 +108,28 @@ Template functions:
 | `join` | `{{ join ", " .Names }}` or `{{ .Names \| join ", " }}`. |
 | `json`, `jsonPretty` | JSON encoding. |
 | `default` | `{{ default "none" .Enum.Doc }}`; returns the fallback for zero values. |
+
+## Existing types
+
+By default the generated file declares `type <Name> <UnderlyingType>`. Set
+`typeMode: existing` when the type is declared by hand:
+
+```yaml
+defaults:
+  typeMode: existing
+
+enums:
+  - name: Color
+    type: string
+    values: [red, green, blue]
+```
+
+The generated file then contains only the constants and methods. The
+hand-written declaration must exist in the same Go package and use the
+underlying type declared in the manifest. The Go compiler verifies the match;
+`enumer` does not parse Go source.
+
+See [examples/existing](../examples/existing) for a runnable example.
 
 ## Features
 
