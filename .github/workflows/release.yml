@@ -26,4 +26,7 @@ jobs:
           version: latest
           args: release --clean
         env:
+          # GITHUB_TOKEN is generated automatically for every workflow run.
+          # No repository secret is needed; permissions: contents: write above
+          # grants it release-creation access.
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

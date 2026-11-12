@@ -100,6 +100,19 @@ Generated files in `examples/**/*_enum.go` and `generator/testdata/**` are
 excluded from the header check. Dependency licenses and known vulnerabilities
 are checked in CI as well.
 
+## Release token
+
+The release workflow uses the automatic `GITHUB_TOKEN` with
+`permissions: contents: write`. No repository secret is required, and GitHub
+reserves the `GITHUB_` prefix for secrets, so a secret with that name cannot be
+created.
+
+If you intentionally need a long-lived token — for example, to trigger another
+workflow or to bypass branch protection — create a fine-grained PAT with
+`contents: write` for this repository, store it as `RELEASE_TOKEN`, and change
+the workflow env to `GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}`. The automatic
+token is safer and is the default.
+
 ## Commits
 
 Use conventional commit prefixes: `feat:`, `fix:`, `docs:`, `test:`, `chore:`.
