@@ -18,6 +18,8 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+      - run: go test ./...
+      - run: go vet ./...
       - uses: goreleaser/goreleaser-action@v6
         with:
           distribution: goreleaser
