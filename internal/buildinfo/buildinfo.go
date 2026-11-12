@@ -1,3 +1,6 @@
+// Copyright (c) 2026 The enumer Authors
+// SPDX-License-Identifier: MIT
+
 // Package buildinfo carries version metadata injected at build time.
 package buildinfo
 

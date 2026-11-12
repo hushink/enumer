@@ -1,0 +1,15 @@
+header:
+  license:
+    spdx-id: MIT
+    copyright-owner: The enumer Authors
+    copyright-year: '2026'
+    content: |
+      Copyright (c) [year] [owner]
+      SPDX-License-Identifier: MIT
+
+  paths:
+    - '**/*.go'
+
+  paths-ignore:
+    - 'examples/**/*_enum.go'
+    - 'generator/testdata/**'

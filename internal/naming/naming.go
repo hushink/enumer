@@ -1,3 +1,6 @@
+// Copyright (c) 2026 The enumer Authors
+// SPDX-License-Identifier: MIT
+
 // Package naming provides identifier conversions used by the manifest loader,
 // the generator and custom template functions.
 package naming

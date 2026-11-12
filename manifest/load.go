@@ -1,3 +1,6 @@
+// Copyright (c) 2026 The enumer Authors
+// SPDX-License-Identifier: MIT
+
 // Package manifest discovers, decodes, validates and normalizes enumer.yaml
 // manifests into the normalized model.
 package manifest

@@ -18,6 +18,8 @@ make lint       # golangci-lint run ./...
 make check      # verify committed generated files are up to date
 make golden     # regenerate generator/testdata golden files
 make build      # build bin/enumer
+make license    # SPDX headers + dependency license check
+make vuln       # govulncheck
 ```
 
 Without `make`:
@@ -72,6 +74,31 @@ go test ./generator -run TestGolden -update
 
 Review the diff before committing. The golden test uses a relative header path,
 so it is stable across machines.
+
+## License headers
+
+Every authored Go file starts with:
+
+```go
+// Copyright (c) 2026 The enumer Authors
+// SPDX-License-Identifier: MIT
+```
+
+Add it manually or run:
+
+```sh
+go run github.com/apache/skywalking-eyes/cmd/license-eye@v0.9.0 header fix
+```
+
+Then verify:
+
+```sh
+make license
+```
+
+Generated files in `examples/**/*_enum.go` and `generator/testdata/**` are
+excluded from the header check. Dependency licenses and known vulnerabilities
+are checked in CI as well.
 
 ## Commits
 

@@ -1,3 +1,6 @@
+// Copyright (c) 2026 The enumer Authors
+// SPDX-License-Identifier: MIT
+
 // Package diag defines structured diagnostics shared by the manifest loader,
 // the generator and the command line interface.
 package diag

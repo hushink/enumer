@@ -1,3 +1,6 @@
+// Copyright (c) 2026 The enumer Authors
+// SPDX-License-Identifier: MIT
+
 // Package cli implements the enumer command line interface.
 package cli
 

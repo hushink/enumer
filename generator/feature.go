@@ -1,3 +1,6 @@
+// Copyright (c) 2026 The enumer Authors
+// SPDX-License-Identifier: MIT
+
 // Package generator turns normalized manifests into Go source files and
 // custom template outputs.
 package generator
