@@ -15,6 +15,10 @@ func (stringFeature) Requires() []string             { return nil }
 func (stringFeature) Validate(*model.EnumSpec) error { return nil }
 
 func (stringFeature) Emit(e *model.EnumSpec) (Fragment, error) {
+	if e.HasFeature("flags") {
+		return Fragment{}, nil
+	}
+
 	var b strings.Builder
 	b.WriteString("// String implements fmt.Stringer.\n")
 	fmt.Fprintf(&b, "func (x %s) String() string {\n", e.Name)
@@ -77,14 +81,23 @@ func (parseFeature) Emit(e *model.EnumSpec) (Fragment, error) {
 		lookup = "strings.ToLower(name)"
 	}
 	fmt.Fprintf(&b, "\tif x, ok := _%sValue[%s]; ok {\n\t\treturn x, nil\n\t}\n", e.Name, lookup)
-	fmt.Fprintf(&b, "\treturn %s, fmt.Errorf(\"%%w: %%q\", ErrInvalid%s, name)\n", zeroLiteral(e), e.Name)
+	if e.HasFeature("flags") {
+		fmt.Fprintf(&b, "\tvar out %s\n", e.Name)
+		fmt.Fprintf(&b, "\tfor _, part := range strings.Split(%s, \"|\") {\n", lookup)
+		b.WriteString("\t\tpart = strings.TrimSpace(part)\n")
+		fmt.Fprintf(&b, "\t\tx, ok := _%sValue[part]\n", e.Name)
+		fmt.Fprintf(&b, "\t\tif !ok {\n\t\t\treturn 0, fmt.Errorf(\"%%w: %%q\", ErrInvalid%s, name)\n\t\t}\n", e.Name)
+		b.WriteString("\t\tout |= x\n\t}\n\treturn out, nil\n")
+	} else {
+		fmt.Fprintf(&b, "\treturn %s, fmt.Errorf(\"%%w: %%q\", ErrInvalid%s, name)\n", zeroLiteral(e), e.Name)
+	}
 	b.WriteString("}\n")
 
 	frag := Fragment{
 		Code:    b.String(),
 		Imports: []model.Import{{Path: "errors"}, {Path: "fmt"}},
 	}
-	if !e.CaseSensitive {
+	if !e.CaseSensitive || e.HasFeature("flags") {
 		frag.Imports = append(frag.Imports, model.Import{Path: "strings"})
 	}
 	return frag, nil
@@ -100,6 +113,28 @@ func (validFeature) Emit(e *model.EnumSpec) (Fragment, error) {
 	var b strings.Builder
 	fmt.Fprintf(&b, "// IsValid reports whether x is a valid %s.\n", e.Name)
 	fmt.Fprintf(&b, "func (x %s) IsValid() bool {\n", e.Name)
+	if e.HasFeature("flags") {
+		var mask []*model.ValueSpec
+		for _, v := range uniqueValues(e) {
+			if v.Number != "0" {
+				mask = append(mask, v)
+			}
+		}
+		if len(mask) == 0 {
+			b.WriteString("\treturn x == 0\n")
+		} else {
+			b.WriteString("\treturn x&^(")
+			for i, v := range mask {
+				if i > 0 {
+					b.WriteString(" | ")
+				}
+				b.WriteString(v.ConstName)
+			}
+			b.WriteString(") == 0\n")
+		}
+		b.WriteString("}\n")
+		return Fragment{Code: b.String()}, nil
+	}
 	if e.IsString() {
 		lookup := "string(x)"
 		if !e.CaseSensitive {

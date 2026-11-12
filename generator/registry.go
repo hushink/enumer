@@ -7,6 +7,7 @@ func DefaultRegistry() *Registry {
 		stringFeature{},
 		parseFeature{},
 		validFeature{},
+		flagsFeature{},
 		mustParseFeature{},
 		textFeature{},
 		jsonFeature{},

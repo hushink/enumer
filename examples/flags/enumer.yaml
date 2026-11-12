@@ -1,0 +1,19 @@
+version: 1
+package: flags
+
+defaults:
+  features: [string, parse, valid, text, names, values]
+
+enums:
+  - name: Permission
+    type: uint32
+    features: [flags, json:number]
+    values:
+      - name: none
+        value: 0
+      - name: read
+        value: 1
+      - name: write
+        value: 2
+      - name: execute
+        value: 4

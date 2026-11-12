@@ -78,3 +78,8 @@ _Avoid_: type source, declaration mode
 **Base Defaults**:
 Defaults inherited from the manifest referenced by `extends`.
 _Avoid_: global config, inherited manifest
+
+**Bit Flag**:
+A numeric enum value that represents a single bit and can be combined with
+other flags through bitwise operations.
+_Avoid_: bitmask value, permission bit

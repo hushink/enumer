@@ -306,6 +306,85 @@ enums:
 	require.Contains(t, diags.Format(), "conflicts with")
 }
 
+func TestFlagsValidation(t *testing.T) {
+	cases := []struct {
+		name     string
+		manifest string
+		want     string
+	}{
+		{
+			name: "signed",
+			manifest: `version: 1
+package: sample
+enums:
+  - name: A
+    type: int32
+    features: [flags]
+    values:
+      - name: one
+        value: 1
+`,
+			want: "unsigned integer",
+		},
+		{
+			name: "not-power-of-two",
+			manifest: `version: 1
+package: sample
+enums:
+  - name: A
+    type: uint32
+    features: [flags]
+    values:
+      - name: three
+        value: 3
+`,
+			want: "power of two",
+		},
+		{
+			name: "duplicate-zero",
+			manifest: `version: 1
+package: sample
+enums:
+  - name: A
+    type: uint32
+    allowDuplicateValues: true
+    features: [flags]
+    values:
+      - name: none
+        value: 0
+      - name: zero
+        value: 0
+`,
+			want: "at most one zero",
+		},
+		{
+			name: "duplicate-flag",
+			manifest: `version: 1
+package: sample
+enums:
+  - name: A
+    type: uint32
+    allowDuplicateValues: true
+    features: [flags]
+    values:
+      - name: read
+        value: 1
+      - name: read_again
+        value: 1
+`,
+			want: "duplicate flag",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			m, _ := loadOne(t, tc.manifest)
+			_, diags := New().Generate(context.Background(), []*model.Manifest{m}, GenerateOptions{})
+			require.True(t, diags.HasErrors())
+			require.Contains(t, diags.Format(), tc.want)
+		})
+	}
+}
+
 func TestGeneratedCodeCompilesAndRuns(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping compile test in short mode")
@@ -352,6 +431,18 @@ enums:
         value: 1
       - name: urgent
         value: 1
+  - name: Permission
+    type: uint32
+    features: [flags, json:number]
+    values:
+      - name: none
+        value: 0
+      - name: read
+        value: 1
+      - name: write
+        value: 2
+      - name: execute
+        value: 4
 `)
 	_, diags := New().Generate(context.Background(), []*model.Manifest{m}, GenerateOptions{})
 	require.False(t, diags.HasErrors(), diags.Format())
@@ -498,6 +589,57 @@ func TestDuplicateValues(t *testing.T) {
 	b, err := json.Marshal(PriorityUrgent)
 	if err != nil || string(b) != "1" {
 		t.Fatalf("json: %s %v", b, err)
+	}
+}
+
+func TestFlagBehavior(t *testing.T) {
+	rw := PermissionRead | PermissionWrite
+	if PermissionNone.String() != "none" {
+		t.Fatalf("zero string: %q", PermissionNone.String())
+	}
+	if rw.String() != "read|write" {
+		t.Fatalf("string: %q", rw.String())
+	}
+	if !rw.Has(PermissionRead) || rw.Has(PermissionExecute) {
+		t.Fatal("Has")
+	}
+	if rw.With(PermissionExecute) != PermissionRead|PermissionWrite|PermissionExecute {
+		t.Fatal("With")
+	}
+	if rw.Clear(PermissionWrite) != PermissionRead {
+		t.Fatal("Clear")
+	}
+	if rw.Toggle(PermissionWrite) != PermissionRead {
+		t.Fatal("Toggle")
+	}
+	if !rw.IsValid() || (rw | Permission(8)).IsValid() {
+		t.Fatal("IsValid")
+	}
+	parsed, err := ParsePermission("read|write")
+	if err != nil || parsed != rw {
+		t.Fatalf("Parse: %v %v", parsed, err)
+	}
+	parsed, err = ParsePermission(" read | write ")
+	if err != nil || parsed != rw {
+		t.Fatalf("Parse spaces: %v %v", parsed, err)
+	}
+	if _, err := ParsePermission("read|bogus"); err == nil {
+		t.Fatal("expected parse error")
+	}
+	flags := rw.Flags()
+	if len(flags) != 2 || flags[0] != PermissionRead || flags[1] != PermissionWrite {
+		t.Fatalf("Flags: %v", flags)
+	}
+	data, err := json.Marshal(rw)
+	if err != nil || string(data) != "3" {
+		t.Fatalf("json marshal: %s %v", data, err)
+	}
+	var p Permission
+	if err := json.Unmarshal([]byte("3"), &p); err != nil || p != rw {
+		t.Fatalf("json unmarshal: %v %v", p, err)
+	}
+	if err := json.Unmarshal([]byte("8"), &p); err == nil {
+		t.Fatal("expected invalid json value")
 	}
 }
 `

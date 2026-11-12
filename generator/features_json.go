@@ -62,21 +62,27 @@ func (jsonNumberFeature) Emit(e *model.EnumSpec) (Fragment, error) {
 	b.WriteString("\tif err != nil {\n\t\treturn err\n\t}\n")
 	fmt.Fprintf(&b, "\tv := %s(n)\n", e.Name)
 
-	uniq := uniqueValues(e)
-	b.WriteString("\tswitch v {\n")
-	if len(uniq) > 0 {
-		b.WriteString("\tcase ")
-		for i, value := range uniq {
-			if i > 0 {
-				b.WriteString(", ")
+	if e.HasFeature("flags") {
+		b.WriteString("\tif !v.IsValid() {\n")
+		fmt.Fprintf(&b, "\t\treturn fmt.Errorf(\"%%w: %%d\", ErrInvalid%s, n)\n", e.Name)
+		b.WriteString("\t}\n")
+	} else {
+		uniq := uniqueValues(e)
+		b.WriteString("\tswitch v {\n")
+		if len(uniq) > 0 {
+			b.WriteString("\tcase ")
+			for i, value := range uniq {
+				if i > 0 {
+					b.WriteString(", ")
+				}
+				b.WriteString(value.ConstName)
 			}
-			b.WriteString(value.ConstName)
+			b.WriteString(":\n")
 		}
-		b.WriteString(":\n")
+		b.WriteString("\tdefault:\n")
+		fmt.Fprintf(&b, "\t\treturn fmt.Errorf(\"%%w: %%d\", ErrInvalid%s, n)\n", e.Name)
+		b.WriteString("\t}\n")
 	}
-	b.WriteString("\tdefault:\n")
-	fmt.Fprintf(&b, "\t\treturn fmt.Errorf(\"%%w: %%d\", ErrInvalid%s, n)\n", e.Name)
-	b.WriteString("\t}\n")
 	b.WriteString("\t*x = v\n\treturn nil\n}\n")
 
 	return Fragment{

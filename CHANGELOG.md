@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `typeMode: emit|existing` to generate the type declaration or reference a
   hand-written one.
 - `extends` for shared defaults across manifests; only `defaults` is inherited.
+- `flags` for unsigned integer bit masks with `Has`, `With`, `Clear`, `Toggle`,
+  `Flags` and combination-aware `String`/`Parse`/`IsValid`.
 - `sql:null` wrappers marshal invalid values as JSON `null` and unmarshal
   `null` without error.
 - Feature dependency resolution and strict feature validation.

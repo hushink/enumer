@@ -181,6 +181,7 @@ See [examples/existing](../examples/existing) for a runnable example.
 | `string` | `String() string` | — |
 | `parse` | `ErrInvalid<Name>`, `Parse<Name>` and the value map | — |
 | `valid` | `IsValid() bool` | `parse` |
+| `flags` | Flag helpers and combination-aware `String`/`Parse`/`IsValid` | `string`, `parse`, `valid` |
 | `mustparse` | `MustParse<Name>` | `parse` |
 | `text` | `MarshalText` / `UnmarshalText` | `parse`, `string` |
 | `json` | Name-based `MarshalJSON` / `UnmarshalJSON` | `parse`, `string` |
@@ -208,6 +209,38 @@ type Null<Name> struct {
 
 The wrapper implements `sql.Scanner` and `driver.Valuer`. A `nil` database value
 sets `Valid` to false and `Value()` writes `nil` back.
+
+## Bit flags
+
+`flags` is only valid for unsigned integer enums. Every value must be zero or a
+power of two, at most one value may be zero, and values must be unique.
+
+```yaml
+enums:
+  - name: Permission
+    type: uint32
+    features: [flags]
+    values:
+      - name: none
+        value: 0
+      - name: read
+        value: 1
+      - name: write
+        value: 2
+```
+
+Generated helpers:
+
+- `Has(flag) bool`
+- `With(flag)`, `Clear(flag)`, `Toggle(flag)`
+- `Flags() []<Name>`
+- `String()` joins set flag names with `|`; unknown bits are rendered as
+  `Name(n)`.
+- `Parse` accepts a single name or a `|`-separated combination.
+- `IsValid` reports whether only declared bits are set.
+
+`flags` adds `string`, `parse` and `valid` unless they are explicitly disabled.
+See [examples/flags](../examples/flags) for a runnable example.
 
 ## Output resolution
 

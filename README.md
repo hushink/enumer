@@ -260,6 +260,7 @@ Features are additive on top of `defaults.features`. The default set is
 | `string` | `String() string` |
 | `parse` | `ErrInvalid<Name>`, `Parse<Name>(string) (<Name>, error)` and the value map |
 | `valid` | `IsValid() bool` |
+| `flags` | `Has`, `With`, `Clear`, `Toggle`, `Flags` and combination-aware `String`/`Parse`/`IsValid` |
 | `mustparse` | `MustParse<Name>(string) <Name>` |
 | `text` | `MarshalText` / `UnmarshalText` (also enables default JSON encoding) |
 | `json` | Explicit name-based `MarshalJSON` / `UnmarshalJSON` |
@@ -276,11 +277,46 @@ Dependencies are resolved automatically:
 
 - `text`, `json` and `flag` require `parse` and `string`.
 - `valid` and `mustparse` require `parse`.
+- `flags` requires `string`, `parse` and `valid`, and only works on unsigned
+  integer types.
 - `sql` and `sql:int` require `parse` and `string`.
 - `json:number` requires `parse`.
 - `sql:null` requires exactly one of `sql` or `sql:int`.
 
 `json` and `json:number` are mutually exclusive, as are `sql` and `sql:int`.
+
+### Bit flags
+
+Enable `flags` on an unsigned integer enum whose values are zero or powers of
+two:
+
+```yaml
+enums:
+  - name: Permission
+    type: uint32
+    features: [flags]
+    values:
+      - name: none
+        value: 0
+      - name: read
+        value: 1
+      - name: write
+        value: 2
+```
+
+```go
+PermissionRead | PermissionWrite // String -> "read|write"
+ParsePermission("read|write")   // PermissionRead | PermissionWrite
+x.Has(PermissionRead)           // all bits set?
+x.With(PermissionExecute)       // set a flag
+x.Clear(PermissionWrite)        // clear a flag
+x.Toggle(PermissionWrite)       // toggle a flag
+x.Flags()                       // []Permission{PermissionRead, PermissionWrite}
+```
+
+`String`, `Parse` and `IsValid` are flag-aware; `json`, `text`, `yaml`, `sql`
+and `flag` build on them. `flags` rejects duplicate values, multiple zero
+values and values that are not powers of two.
 
 ## CLI
 
@@ -408,6 +444,8 @@ declare the same type manually in Go source.
   hand-written type declaration.
 - [examples/extends](examples/extends) — two packages sharing defaults through
   `extends`.
+- [examples/flags](examples/flags) — bit flags with combination-aware
+  `String`, `Parse` and `IsValid`.
 
 ## Design docs
 

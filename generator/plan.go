@@ -180,6 +180,8 @@ func enumSymbols(e *model.EnumSpec, features []Feature) []string {
 			syms = append(syms, "Parse"+e.Name, "ErrInvalid"+e.Name, "_"+e.Name+"Value")
 		case "mustparse":
 			syms = append(syms, "MustParse"+e.Name)
+		case "flags":
+			syms = append(syms, "_"+e.Name+"Flags", "_"+e.Name+"FlagNames")
 		case "sql:int":
 			syms = append(syms, "_"+e.Name+"ByNumber")
 		case "sql:null":
