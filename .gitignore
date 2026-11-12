@@ -1,0 +1,7 @@
+/enumer
+/enumer.exe
+/dist/
+*.tmp
+*.test
+coverage.out
+.idea/

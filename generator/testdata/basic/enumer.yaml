@@ -1,0 +1,31 @@
+version: 1
+package: sample
+
+defaults:
+  features: [string, parse, valid, text, mustparse, names, values, ptr]
+  naming:
+    prefix: type
+    identifier: camel
+
+enums:
+  - name: Color
+    type: string
+    doc: Color is a color.
+    features: [json, flag]
+    values:
+      - red
+      - name: green
+        value: GREEN
+        doc: The green color.
+        aliases: [g]
+      - name: blue
+        deprecated: use teal
+
+  - name: Status
+    type: int32
+    features: [json:number, sql, sql:null, flag]
+    values:
+      - pending
+      - running
+      - name: failed
+        value: 10

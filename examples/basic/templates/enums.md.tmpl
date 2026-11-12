@@ -1,0 +1,8 @@
+# Enumerations
+
+{{range .Enums}}
+## {{.Name}} ({{.Type.Name}})
+
+{{range .Values}}- `{{.ConstName}}` = {{.Text}}
+{{end}}
+{{end}}

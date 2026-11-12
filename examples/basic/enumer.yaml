@@ -1,0 +1,35 @@
+version: 1
+package: basic
+
+defaults:
+  features: [string, parse, valid, text, mustparse, names, values, ptr]
+  naming:
+    prefix: type
+    identifier: camel
+
+enums:
+  - name: Color
+    type: string
+    doc: Color is an example string enumeration.
+    features: [json, flag]
+    values:
+      - red
+      - name: green
+        value: GREEN
+        aliases: [g]
+      - name: blue
+        deprecated: use teal
+
+  - name: Status
+    type: int32
+    doc: Status is an example numeric enumeration.
+    features: [json:number, sql, sql:null]
+    values:
+      - pending
+      - running
+      - name: failed
+        value: 10
+
+targets:
+  - template: ./templates/enums.md.tmpl
+    output: ENUMS.md
