@@ -1,5 +1,6 @@
 /enumer
 /enumer.exe
+/bin/
 /dist/
 *.tmp
 *.test

@@ -1,0 +1,46 @@
+version: 2
+
+project_name: enumer
+
+builds:
+  - id: enumer
+    main: ./cmd/enumer
+    binary: enumer
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X github.com/hushink/enumer/internal/buildinfo.Version={{.Version}}
+      - -X github.com/hushink/enumer/internal/buildinfo.Commit={{.Commit}}
+      - -X github.com/hushink/enumer/internal/buildinfo.Date={{.Date}}
+
+archives:
+  - formats: [tar.gz]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - LICENSE
+      - README.md
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
