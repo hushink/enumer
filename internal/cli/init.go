@@ -1,3 +1,6 @@
+// Copyright (c) 2026 The enumer Authors
+// SPDX-License-Identifier: MIT
+
 package cli
 
 import (
@@ -14,7 +17,9 @@ import (
 const initManifest = `version: 1
 
 defaults:
-  features: [string, parse, valid, text]
+  features: [string, parse, valid, text, names, values]
+  typeMode: auto
+  comments: auto
   naming:
     prefix: type
     identifier: camel
@@ -29,7 +34,8 @@ enums:
     doc: Color is an example string enumeration.
     values:
       - red
-      - green
+      - name: green
+        comment: Green is the second color.
       - blue
 
   - name: Status

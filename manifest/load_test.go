@@ -1,3 +1,6 @@
+// Copyright (c) 2026 The enumer Authors
+// SPDX-License-Identifier: MIT
+
 package manifest
 
 import (
@@ -414,6 +417,55 @@ enums:
 	require.False(t, diags.HasErrors(), diags.Format())
 	require.Equal(t, model.TypeModeExisting, m.Enums[0].TypeMode)
 	require.Equal(t, model.TypeModeEmit, m.Enums[1].TypeMode)
+}
+
+func TestLoadCommentOverrides(t *testing.T) {
+	dir := t.TempDir()
+	path := writeManifest(t, dir, `version: 1
+package: p
+enums:
+  - name: A
+    doc: old type doc
+    comment: new type comment
+    comments: none
+    values:
+      - name: red
+        doc: old value doc
+        comment: new value comment
+`)
+	m, diags := Load(path)
+	require.False(t, diags.HasErrors(), diags.Format())
+	e := m.Enums[0]
+	require.Equal(t, "new type comment", e.Doc)
+	require.Equal(t, model.CommentsNone, e.Comments)
+	require.Equal(t, "new value comment", e.Values[0].Doc)
+}
+
+func TestLoadCommentsInvalid(t *testing.T) {
+	dir := t.TempDir()
+	path := writeManifest(t, dir, `version: 1
+package: p
+enums:
+  - name: A
+    comments: sometimes
+    values: [x]
+`)
+	_, diags := Load(path)
+	require.True(t, diags.HasErrors())
+	require.Contains(t, diags.Format(), "unknown comments mode")
+}
+
+func TestLoadTypeModeAutoDefault(t *testing.T) {
+	dir := t.TempDir()
+	path := writeManifest(t, dir, `version: 1
+package: p
+enums:
+  - name: A
+    values: [x]
+`)
+	m, diags := Load(path)
+	require.False(t, diags.HasErrors(), diags.Format())
+	require.Equal(t, model.TypeModeAuto, m.Enums[0].TypeMode)
 }
 
 func TestLoadTypeModeInvalid(t *testing.T) {

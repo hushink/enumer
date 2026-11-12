@@ -1,8 +1,12 @@
+// Copyright (c) 2026 The enumer Authors
+// SPDX-License-Identifier: MIT
+
 package generator
 
 import (
 	"context"
 	"flag"
+	"go/format"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -17,10 +21,16 @@ var update = flag.Bool("update", false, "update golden files")
 
 func loadOne(t *testing.T, content string) (*model.Manifest, string) {
 	t.Helper()
+	return loadOneWithFiles(t, map[string]string{"enumer.yaml": content})
+}
+
+func loadOneWithFiles(t *testing.T, files map[string]string) (*model.Manifest, string) {
+	t.Helper()
 	dir := t.TempDir()
-	path := filepath.Join(dir, "enumer.yaml")
-	require.NoError(t, os.WriteFile(path, []byte(content), 0o644))
-	m, diags := manifest.Load(path)
+	for name, content := range files {
+		require.NoError(t, os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644))
+	}
+	m, diags := manifest.Load(filepath.Join(dir, "enumer.yaml"))
 	require.False(t, diags.HasErrors(), diags.Format())
 	return m, dir
 }
@@ -150,6 +160,50 @@ targets:
 	require.Equal(t, "Status=3\n", string(content))
 }
 
+func TestCustomTargetFormatsGo(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "templates"), 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "templates", "go.tmpl"), []byte("package sample\n\nfunc   Bad( )  {}\n"), 0o644))
+	path := filepath.Join(dir, "enumer.yaml")
+	require.NoError(t, os.WriteFile(path, []byte(`version: 1
+package: sample
+enums:
+  - name: Color
+    values: [red]
+targets:
+  - template: ./templates/go.tmpl
+    output: generated.go
+`), 0o644))
+
+	m, diags := manifest.Load(path)
+	require.False(t, diags.HasErrors(), diags.Format())
+	_, gdiags := New().Generate(context.Background(), []*model.Manifest{m}, GenerateOptions{})
+	require.False(t, gdiags.HasErrors(), gdiags.Format())
+
+	content, err := os.ReadFile(filepath.Join(dir, "generated.go"))
+	require.NoError(t, err)
+	require.Contains(t, string(content), "func Bad() {}")
+	require.NotContains(t, string(content), "func   Bad( )")
+}
+
+func TestGeneratedCodeIsFormatted(t *testing.T) {
+	m, dir := loadOne(t, `version: 1
+package: sample
+enums:
+  - name: Color
+    type: string
+    values: [red, green]
+`)
+	_, diags := New().Generate(context.Background(), []*model.Manifest{m}, GenerateOptions{})
+	require.False(t, diags.HasErrors(), diags.Format())
+
+	content, err := os.ReadFile(filepath.Join(dir, "color_enum.go"))
+	require.NoError(t, err)
+	formatted, err := format.Source(content)
+	require.NoError(t, err)
+	require.Equal(t, string(formatted), string(content))
+}
+
 func TestAggregate(t *testing.T) {
 	m, dir := loadOne(t, `version: 1
 package: sample
@@ -200,6 +254,7 @@ enums:
     type: string
     values: [red, green]
 `)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "types.go"), []byte("package sample\n\ntype Color string\n"), 0o644))
 	_, diags := New().Generate(context.Background(), []*model.Manifest{m}, GenerateOptions{})
 	require.False(t, diags.HasErrors(), diags.Format())
 
@@ -208,6 +263,146 @@ enums:
 	require.NotContains(t, string(content), "type Color string")
 	require.Contains(t, string(content), `ColorRed Color = "red"`)
 	require.Contains(t, string(content), "func ParseColor")
+}
+
+func TestAutoTypeModeDefaultsToEmit(t *testing.T) {
+	m, dir := loadOne(t, `version: 1
+package: sample
+enums:
+  - name: Color
+    type: string
+    values: [red, green]
+`)
+	_, diags := New().Generate(context.Background(), []*model.Manifest{m}, GenerateOptions{})
+	require.False(t, diags.HasErrors(), diags.Format())
+
+	content, err := os.ReadFile(filepath.Join(dir, "color_enum.go"))
+	require.NoError(t, err)
+	text := string(content)
+	require.Contains(t, text, "type Color string")
+	require.Contains(t, text, `ColorRed Color = "red"`)
+	require.Contains(t, text, "func ColorNames() []string")
+	require.Contains(t, text, "func ColorValues() []Color")
+}
+
+func TestAutoTypeModeUsesExistingType(t *testing.T) {
+	m, dir := loadOneWithFiles(t, map[string]string{
+		"enumer.yaml": `version: 1
+package: sample
+enums:
+  - name: Color
+    type: string
+    values: [red, green]
+`,
+		"types.go": "package sample\n\ntype Color string\n",
+	})
+	_, diags := New().Generate(context.Background(), []*model.Manifest{m}, GenerateOptions{})
+	require.False(t, diags.HasErrors(), diags.Format())
+
+	content, err := os.ReadFile(filepath.Join(dir, "color_enum.go"))
+	require.NoError(t, err)
+	require.NotContains(t, string(content), "type Color string")
+	require.Contains(t, string(content), `ColorRed Color = "red"`)
+}
+
+func TestAutoTypeModeTypeMismatch(t *testing.T) {
+	m, _ := loadOneWithFiles(t, map[string]string{
+		"enumer.yaml": `version: 1
+package: sample
+enums:
+  - name: Color
+    type: string
+    values: [red]
+`,
+		"types.go": "package sample\n\ntype Color int\n",
+	})
+	_, diags := New().Generate(context.Background(), []*model.Manifest{m}, GenerateOptions{})
+	require.True(t, diags.HasErrors())
+	require.Contains(t, diags.Format(), "underlying type int")
+}
+
+func TestExistingTypeModeMissingType(t *testing.T) {
+	m, _ := loadOne(t, `version: 1
+package: sample
+defaults:
+  typeMode: existing
+enums:
+  - name: Color
+    type: string
+    values: [red]
+`)
+	_, diags := New().Generate(context.Background(), []*model.Manifest{m}, GenerateOptions{})
+	require.True(t, diags.HasErrors())
+	require.Contains(t, diags.Format(), "requires type Color")
+}
+
+func TestEmitTypeModeRejectsExistingType(t *testing.T) {
+	m, _ := loadOneWithFiles(t, map[string]string{
+		"enumer.yaml": `version: 1
+package: sample
+defaults:
+  typeMode: emit
+enums:
+  - name: Color
+    type: string
+    values: [red]
+`,
+		"types.go": "package sample\n\ntype Color string\n",
+	})
+	_, diags := New().Generate(context.Background(), []*model.Manifest{m}, GenerateOptions{})
+	require.True(t, diags.HasErrors())
+	require.Contains(t, diags.Format(), "already declared")
+}
+
+func TestAutoTypeModeRejectsAliasAndGeneric(t *testing.T) {
+	cases := []struct {
+		name string
+		decl string
+		want string
+	}{
+		{"alias", "type Color = string\n", "alias"},
+		{"generic", "type Color[T any] string\n", "generic"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			m, _ := loadOneWithFiles(t, map[string]string{
+				"enumer.yaml": `version: 1
+package: sample
+enums:
+  - name: Color
+    type: string
+    values: [red]
+`,
+				"types.go": "package sample\n\n" + tc.decl,
+			})
+			_, diags := New().Generate(context.Background(), []*model.Manifest{m}, GenerateOptions{})
+			require.True(t, diags.HasErrors())
+			require.Contains(t, diags.Format(), tc.want)
+		})
+	}
+}
+
+func TestCommentOverrides(t *testing.T) {
+	m, dir := loadOne(t, `version: 1
+package: sample
+defaults:
+  comments: none
+enums:
+  - name: Color
+    comment: Custom type comment.
+    values:
+      - name: red
+        comment: Custom value comment.
+`)
+	_, diags := New().Generate(context.Background(), []*model.Manifest{m}, GenerateOptions{})
+	require.False(t, diags.HasErrors(), diags.Format())
+
+	content, err := os.ReadFile(filepath.Join(dir, "color_enum.go"))
+	require.NoError(t, err)
+	text := string(content)
+	require.Contains(t, text, "// Custom type comment.")
+	require.Contains(t, text, "// Custom value comment.")
+	require.NotContains(t, text, "is an enumeration")
 }
 
 func TestFeatureError(t *testing.T) {

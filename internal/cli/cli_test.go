@@ -1,3 +1,6 @@
+// Copyright (c) 2026 The enumer Authors
+// SPDX-License-Identifier: MIT
+
 package cli
 
 import (
@@ -24,6 +27,14 @@ func TestInitGenerateCheck(t *testing.T) {
 	require.Equal(t, 0, code, stderr.String())
 	require.FileExists(t, filepath.Join(dir, "color_enum.go"))
 	require.FileExists(t, filepath.Join(dir, "status_enum.go"))
+
+	colorSource, err := os.ReadFile(filepath.Join(dir, "color_enum.go"))
+	require.NoError(t, err)
+	require.Contains(t, string(colorSource), "type Color string")
+	require.Contains(t, string(colorSource), "ColorRed")
+	require.Contains(t, string(colorSource), "func ColorNames() []string")
+	require.Contains(t, string(colorSource), "func ColorValues() []Color")
+	require.Contains(t, string(colorSource), "// Green is the second color.")
 
 	stdout.Reset()
 	stderr.Reset()

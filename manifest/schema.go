@@ -1,3 +1,6 @@
+// Copyright (c) 2026 The enumer Authors
+// SPDX-License-Identifier: MIT
+
 package manifest
 
 import (
@@ -51,6 +54,8 @@ type enumSchema struct {
 	Name                 string        `yaml:"name"`
 	Type                 string        `yaml:"type"`
 	Doc                  string        `yaml:"doc"`
+	Comment              string        `yaml:"comment"`
+	Comments             string        `yaml:"comments"`
 	Package              string        `yaml:"package"`
 	Output               string        `yaml:"output"`
 	Features             []string      `yaml:"features"`
@@ -66,6 +71,7 @@ type valueSchema struct {
 	Value      *scalar       `yaml:"value"`
 	Number     *numberScalar `yaml:"number"`
 	Doc        string        `yaml:"doc"`
+	Comment    string        `yaml:"comment"`
 	Aliases    []string      `yaml:"aliases"`
 	Deprecated deprecated    `yaml:"deprecated"`
 	Node       yaml.Node     `yaml:"-"`
@@ -78,7 +84,7 @@ type targetSchema struct {
 }
 
 var valueKeys = map[string]struct{}{
-	"name": {}, "value": {}, "number": {}, "doc": {}, "aliases": {}, "deprecated": {},
+	"name": {}, "value": {}, "number": {}, "doc": {}, "comment": {}, "aliases": {}, "deprecated": {},
 }
 
 // scalar captures an arbitrary scalar node without interpreting it. The

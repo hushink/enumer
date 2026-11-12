@@ -1,9 +1,13 @@
+// Copyright (c) 2026 The enumer Authors
+// SPDX-License-Identifier: MIT
+
 package generator
 
 import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"go/format"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -130,10 +134,26 @@ func renderTargets(m *model.Manifest) ([]Output, diag.List) {
 				})
 				return
 			}
+			contentBytes := content.Bytes()
+			if strings.HasSuffix(strings.ToLower(outPath), ".go") {
+				formatted, err := format.Source(contentBytes)
+				if err != nil {
+					diags = append(diags, diag.Diagnostic{
+						Severity: diag.Error,
+						Code:     "format-error",
+						Message:  fmt.Sprintf("target %s must render a complete Go file: %v", target.Template, err),
+						File:     target.Source.File,
+						Line:     target.Source.Line,
+						Column:   target.Source.Column,
+					})
+					return
+				}
+				contentBytes = formatted
+			}
 			outputs = append(outputs, Output{
 				Path:    abs,
 				Package: m.Package,
-				Content: content.Bytes(),
+				Content: contentBytes,
 				Kind:    "target",
 			})
 		}

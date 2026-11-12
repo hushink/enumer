@@ -1,3 +1,6 @@
+// Copyright (c) 2026 The enumer Authors
+// SPDX-License-Identifier: MIT
+
 package manifest
 
 import (
@@ -29,14 +32,14 @@ type resolvedDefaults struct {
 
 func resolveDefaults(ds *defaultsSchema, display string) (resolvedDefaults, diag.List) {
 	d := resolvedDefaults{
-		features:      []string{"string", "parse", "valid", "text"},
+		features:      []string{"string", "parse", "valid", "text", "names", "values"},
 		prefixMode:    "type",
 		identifier:    model.IdentifierCamel,
 		initialisms:   naming.InitialismSet(nil, false),
 		caseSensitive: true,
 		suffix:        "_enum.go",
 		comments:      model.CommentsAuto,
-		typeMode:      model.TypeModeEmit,
+		typeMode:      model.TypeModeAuto,
 	}
 	var diags diag.List
 
@@ -142,9 +145,13 @@ func resolveDefaults(ds *defaultsSchema, display string) (resolvedDefaults, diag
 
 func normalizeEnum(es *enumSchema, src model.Source, d resolvedDefaults, m *model.Manifest, display string) (model.EnumSpec, diag.List) {
 	var diags diag.List
+	doc := es.Doc
+	if es.Comment != "" {
+		doc = es.Comment
+	}
 	e := model.EnumSpec{
 		Name:                 es.Name,
-		Doc:                  es.Doc,
+		Doc:                  doc,
 		Source:               src,
 		CaseSensitive:        d.caseSensitive,
 		Comments:             d.comments,
@@ -158,6 +165,16 @@ func normalizeEnum(es *enumSchema, src model.Source, d resolvedDefaults, m *mode
 	}
 	if !token.IsIdentifier(es.Name) || token.IsKeyword(es.Name) {
 		diags = append(diags, errDiag("invalid-identifier", fmt.Sprintf("%q is not a valid Go type name", es.Name), display, src.Line, src.Column, es.Name, ""))
+	}
+	if es.Comments != "" {
+		switch es.Comments {
+		case "auto":
+			e.Comments = model.CommentsAuto
+		case "none":
+			e.Comments = model.CommentsNone
+		default:
+			diags = append(diags, errDiag("invalid-comments", fmt.Sprintf("unknown comments mode %q; use auto or none", es.Comments), display, src.Line, src.Column, es.Name, ""))
+		}
 	}
 
 	typeName := es.Type
@@ -332,10 +349,14 @@ func normalizeValues(vs []valueSchema, e model.EnumSpec, display string) ([]mode
 			constNames[constName] = src
 		}
 
+		valueDoc := v.Doc
+		if v.Comment != "" {
+			valueDoc = v.Comment
+		}
 		out := model.ValueSpec{
 			Name:      v.Name,
 			ConstName: constName,
-			Doc:       v.Doc,
+			Doc:       valueDoc,
 			Source:    src,
 		}
 		if v.Deprecated.Set {
@@ -442,12 +463,14 @@ func normalizeValues(vs []valueSchema, e model.EnumSpec, display string) ([]mode
 
 func parseTypeMode(s string) (model.TypeMode, error) {
 	switch s {
-	case "", "emit":
+	case "", "auto":
+		return model.TypeModeAuto, nil
+	case "emit":
 		return model.TypeModeEmit, nil
 	case "existing":
 		return model.TypeModeExisting, nil
 	default:
-		return model.TypeModeEmit, fmt.Errorf("unknown typeMode %q; use emit or existing", s)
+		return model.TypeModeAuto, fmt.Errorf("unknown typeMode %q; use auto, emit or existing", s)
 	}
 }
 

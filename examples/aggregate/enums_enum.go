@@ -65,6 +65,26 @@ func (x *Method) UnmarshalText(text []byte) error {
 	return nil
 }
 
+// MethodNames returns the names of all Method values in declaration order.
+func MethodNames() []string {
+	return []string{
+		"get",
+		"post",
+		"put",
+		"delete",
+	}
+}
+
+// MethodValues returns all Method values in declaration order.
+func MethodValues() []Method {
+	return []Method{
+		MethodGet,
+		MethodPost,
+		MethodPut,
+		MethodDelete,
+	}
+}
+
 // Status is an enumeration of int values.
 type Status int
 
@@ -134,4 +154,24 @@ func (x *Status) UnmarshalText(text []byte) error {
 	}
 	*x = v
 	return nil
+}
+
+// StatusNames returns the names of all Status values in declaration order.
+func StatusNames() []string {
+	return []string{
+		"continue",
+		"ok",
+		"created",
+		"accepted",
+	}
+}
+
+// StatusValues returns all Status values in declaration order.
+func StatusValues() []Status {
+	return []Status{
+		StatusContinue,
+		StatusOK,
+		StatusCreated,
+		StatusAccepted,
+	}
 }

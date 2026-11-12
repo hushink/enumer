@@ -1,3 +1,6 @@
+// Copyright (c) 2026 The enumer Authors
+// SPDX-License-Identifier: MIT
+
 // Package model defines the normalized, source-independent representation of
 // an enumer manifest. It is the only input to generators and custom templates.
 //
@@ -205,8 +208,11 @@ type Naming struct {
 type TypeMode int
 
 const (
-	// TypeModeEmit emits the type declaration in the generated file.
-	TypeModeEmit TypeMode = iota
+	// TypeModeAuto emits the type declaration when no declaration exists in the
+	// target package and references the existing declaration otherwise.
+	TypeModeAuto TypeMode = iota
+	// TypeModeEmit always emits the type declaration.
+	TypeModeEmit
 	// TypeModeExisting references a type declared elsewhere in the package.
 	TypeModeExisting
 )

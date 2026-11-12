@@ -58,3 +58,21 @@ func (x *Color) UnmarshalText(text []byte) error {
 	*x = v
 	return nil
 }
+
+// ColorNames returns the names of all Color values in declaration order.
+func ColorNames() []string {
+	return []string{
+		"red",
+		"green",
+		"blue",
+	}
+}
+
+// ColorValues returns all Color values in declaration order.
+func ColorValues() []Color {
+	return []Color{
+		ColorRed,
+		ColorGreen,
+		ColorBlue,
+	}
+}

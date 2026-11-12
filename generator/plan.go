@@ -1,3 +1,6 @@
+// Copyright (c) 2026 The enumer Authors
+// SPDX-License-Identifier: MIT
+
 package generator
 
 import (
@@ -15,6 +18,7 @@ type enumEntry struct {
 	manifest *model.Manifest
 	enum     *model.EnumSpec
 	features []Feature
+	typeMode model.TypeMode
 }
 
 type symbolOwner struct {
@@ -56,7 +60,16 @@ func (g *Generator) plan(_ context.Context, manifests []*model.Manifest) ([]Outp
 				})
 				continue
 			}
-			entries[mi] = append(entries[mi], enumEntry{manifest: m, enum: e, features: features})
+			outputPath := e.Output
+			if m.Aggregate {
+				outputPath = m.Output
+			}
+			typeMode, tdiags := resolveTypeMode(e, outputPath)
+			diags = append(diags, tdiags...)
+			if tdiags.HasErrors() {
+				continue
+			}
+			entries[mi] = append(entries[mi], enumEntry{manifest: m, enum: e, features: features, typeMode: typeMode})
 		}
 	}
 	if diags.HasErrors() {
@@ -115,13 +128,15 @@ func (g *Generator) plan(_ context.Context, manifests []*model.Manifest) ([]Outp
 			}
 			enums := make([]*model.EnumSpec, 0, len(m.Enums))
 			features := make([][]Feature, 0, len(m.Enums))
+			modes := make([]model.TypeMode, 0, len(m.Enums))
 			for i := range m.Enums {
 				enums = append(enums, &m.Enums[i])
 			}
 			for _, entry := range entries[mi] {
 				features = append(features, entry.features)
+				modes = append(modes, entry.typeMode)
 			}
-			if len(features) != len(enums) {
+			if len(features) != len(enums) || len(modes) != len(enums) {
 				continue
 			}
 			pkg := m.Package
@@ -131,7 +146,7 @@ func (g *Generator) plan(_ context.Context, manifests []*model.Manifest) ([]Outp
 			for i := range enums {
 				addSymbols(filepath.Dir(m.Output), pkg, enums[i], features[i])
 			}
-			content, err := renderFile(pkg, headerComment(m, m.Output), enums, features)
+			content, err := renderFile(pkg, headerComment(m, m.Output), withTypeModes(enums, modes), features)
 			if err != nil {
 				diags = append(diags, diag.Diagnostic{Severity: diag.Error, Code: "format-error", Message: err.Error(), File: m.Output})
 				continue
@@ -145,7 +160,7 @@ func (g *Generator) plan(_ context.Context, manifests []*model.Manifest) ([]Outp
 					continue
 				}
 				addSymbols(filepath.Dir(e.Output), e.Package, e, entry.features)
-				content, err := renderFile(e.Package, headerComment(m, e.Output), []*model.EnumSpec{e}, [][]Feature{entry.features})
+				content, err := renderFile(e.Package, headerComment(m, e.Output), withTypeModes([]*model.EnumSpec{e}, []model.TypeMode{entry.typeMode}), [][]Feature{entry.features})
 				if err != nil {
 					diags = append(diags, diag.Diagnostic{Severity: diag.Error, Code: "format-error", Message: err.Error(), File: e.Output, Enum: e.Name})
 					continue
@@ -193,6 +208,18 @@ func enumSymbols(e *model.EnumSpec, features []Feature) []string {
 		}
 	}
 	return syms
+}
+
+func withTypeModes(enums []*model.EnumSpec, modes []model.TypeMode) []*model.EnumSpec {
+	out := make([]*model.EnumSpec, len(enums))
+	for i, e := range enums {
+		copied := *e
+		if i < len(modes) {
+			copied.TypeMode = modes[i]
+		}
+		out[i] = &copied
+	}
+	return out
 }
 
 func checkOutputPaths(outputs []Output) diag.List {
