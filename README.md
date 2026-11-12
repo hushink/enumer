@@ -1,5 +1,7 @@
 # enumer
 
+**English** | [简体中文](README.zh-CN.md)
+
 [![CI](https://github.com/hushink/enumer/actions/workflows/ci.yml/badge.svg)](https://github.com/hushink/enumer/actions/workflows/ci.yml)
 [![Go Reference](https://pkg.go.dev/badge/github.com/hushink/enumer.svg)](https://pkg.go.dev/github.com/hushink/enumer)
 
@@ -128,7 +130,8 @@ fmt.Println(c) // GREEN
 ## Manifest
 
 A manifest has a version, an optional package name, defaults, a list of enums
-and an optional list of custom targets. See
+and an optional list of custom targets. See the
+[configuration guide](docs/configuration.md) and
 [docs/manifest-schema.md](docs/manifest-schema.md) for the full reference.
 
 ```yaml
@@ -141,7 +144,7 @@ aggregate: false       # true: all enums share one output file
 # output: enums_enum.go # aggregate output path; only with aggregate: true
 
 defaults:
-  features: [string, parse, valid, text]
+  features: [string, parse, valid, text, names, values]
   disableFeatures: []
   naming:
     prefix: type       # type | none | literal:<prefix>
@@ -155,12 +158,14 @@ defaults:
     dir: ""
   comments: auto       # auto | none
   allowDuplicateValues: false
-  typeMode: emit       # emit | existing
+  typeMode: auto       # auto | emit | existing
 
 enums:
   - name: Color
     type: string
     doc: Color is an example string enumeration.
+    # comment: An optional comment override.
+    comments: auto     # per-enum override of auto | none
     package: example   # optional per-enum package override
     output: color_enum.go # optional per-enum output path
     features: [json]
@@ -171,7 +176,7 @@ enums:
       - red
       - name: green
         value: GREEN
-        doc: A custom green.
+        comment: A custom green comment.
         aliases: [g]
         deprecated: true
       - name: blue
@@ -182,6 +187,10 @@ Value names are converted to Go identifiers. `http_status` becomes
 `ColorHTTPStatus` by default; `blue-green` becomes `ColorBlueGreen`. The
 canonical text stays exactly as written unless a string enum supplies `value`.
 
+`doc` and `comment` both override the generated comment; `comment` wins when
+both are set. `comments: none` disables automatic comments for one enum while
+keeping user-provided comments.
+
 ### Shared defaults
 
 Use `extends` to inherit `defaults` from a base YAML file:
@@ -190,7 +199,7 @@ Use `extends` to inherit `defaults` from a base YAML file:
 # base.yaml
 version: 1
 defaults:
-  features: [string, parse, valid, text]
+  features: [string, parse, valid, text, names, values]
   naming:
     prefix: type
 ```
@@ -210,15 +219,18 @@ Only `defaults` is inherited; the base's `enums`, `targets`, `package`,
 fields merge individually, lists such as `features` replace the inherited list,
 and `features: []` clears it. Cycles are errors.
 
-### Existing types
+### Type declarations
 
-By default the generated file declares the type. Use `typeMode: existing` when
-the type is hand-written; enumer then emits only the constants and methods:
+`typeMode` controls whether the generated file declares the enum type:
+
+- `auto` (default): scan the output package. Emit the type when no declaration
+  exists, reference an existing declaration when it does, and report aliases,
+  generic types and underlying-type mismatches.
+- `emit`: always emit the type. An existing declaration in another file is an
+  error, which catches accidental duplicates.
+- `existing`: never emit the type. The declaration must exist and match.
 
 ```yaml
-defaults:
-  typeMode: existing
-
 enums:
   - name: Color
     type: string
@@ -233,9 +245,39 @@ package example
 type Color string
 ```
 
-The hand-written type must live in the same package and use the declared
-underlying type. The Go compiler checks the match; enumer does not parse Go
-source.
+With the default `auto` mode, enumer detects this declaration and emits only
+constants and methods. If the file is missing, it emits the type from the
+manifest. Detection is a syntax-only `go/parser` scan; enumer never loads or
+type-checks packages.
+
+### Enum value lists
+
+`names` and `values` are part of the default feature set and export the value
+list:
+
+```go
+ColorNames()   // []string{"red", "GREEN", "blue"}
+ColorValues()  // []Color{ColorRed, ColorGreen, ColorBlue}
+```
+
+Disable them with `disableFeatures: [names]`, or enable them explicitly in
+manifests that override `features`.
+
+### Comment overrides
+
+Every enum and value accepts `doc` or `comment` to override the generated
+comment. `comment` wins when both are present. `comments: auto|none` can be set
+per enum.
+
+```yaml
+enums:
+  - name: Color
+    comment: Color is the public color enumeration.
+    comments: none
+    values:
+      - name: red
+        comment: Red is the default color.
+```
 
 ### Types
 
@@ -253,7 +295,8 @@ underlying type.
 ## Features
 
 Features are additive on top of `defaults.features`. The default set is
-`[string, parse, valid, text]`.
+`[string, parse, valid, text, names, values]`. An explicit empty list disables
+all features.
 
 | Feature | Generated API |
 | --- | --- |
@@ -424,7 +467,8 @@ g := generator.New(generator.WithRegistry(registry))
 `enumer` deliberately takes a different route:
 
 - The manifest is consumable by non-Go tools and languages.
-- The generator does not parse or type-check Go packages.
+- The generator does not use a comment DSL. `typeMode: auto` performs only a
+  syntax-level declaration scan; it never type-checks packages.
 - Features are composable units with declared dependencies instead of one fixed
   template.
 - Validation is strict and diagnostics carry source positions and stable codes.
@@ -440,15 +484,34 @@ declare the same type manually in Go source.
 - [examples/aggregate](examples/aggregate) — two enums in one generated file
   with a custom initialism.
 - [examples/yaml](examples/yaml) — YAML marshaling with the `yaml` feature.
-- [examples/existing](examples/existing) — `typeMode: existing` with a
-  hand-written type declaration.
+- [examples/existing](examples/existing) — auto detection of a hand-written
+  type declaration; remove `types.go` and the type is generated from the
+  manifest.
 - [examples/extends](examples/extends) — two packages sharing defaults through
   `extends`.
 - [examples/flags](examples/flags) — bit flags with combination-aware
   `String`, `Parse` and `IsValid`.
 
+## Formatting
+
+Generated Go files are formatted with the standard library's `go/format`
+(`format.Source`). Custom targets whose output path ends with `.go` are also
+formatted; they must render a complete Go file, otherwise generation fails with
+a `format-error`.
+
+## Compliance
+
+- The library is MIT licensed; see [LICENSE](LICENSE).
+- Every authored Go file carries an SPDX MIT header, checked in CI with
+  [Apache SkyWalking Eyes](https://github.com/apache/skywalking-eyes).
+- Dependency licenses are checked with `license-eye dependency check`.
+- Third-party notices are listed in
+  [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+- Vulnerabilities are checked with `govulncheck` in CI.
+
 ## Design docs
 
+- [Configuration guide](docs/configuration.md)
 - [Manifest schema](docs/manifest-schema.md)
 - [ADR 0001: YAML manifest and feature registry](docs/adr/0001-yaml-manifest-and-feature-registry.md)
 - [Glossary](GLOSSARY.md)

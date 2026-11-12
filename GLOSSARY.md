@@ -71,8 +71,9 @@ Fields on one enum entry that override the defaults.
 _Avoid_: override rules, special case
 
 **Type Mode**:
-Whether generated code declares the enum type (`emit`) or references a
-hand-written declaration (`existing`).
+Whether generated code emits the enum type (`emit`), references an existing
+declaration (`existing`), or detects the declaration and picks one of the two
+(`auto`, the default).
 _Avoid_: type source, declaration mode
 
 **Base Defaults**:

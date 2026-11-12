@@ -3,9 +3,10 @@
 **Status**: accepted
 
 `enumer` does not use an abice/go-enum style comment DSL. Instead, an
-`enumer.yaml` manifest is the single source of truth: the generator never parses
-Go source, the manifest declares the type, values and settings, and the
-generated file contains the type declaration, constants and methods. Generation
+`enumer.yaml` manifest is the single source of truth: the manifest declares the
+type, values and settings, and the generated file contains the type declaration,
+constants and methods. The generator does not use Go source to discover values;
+`typeMode: auto` performs only a syntax-level declaration scan. Generation
 always follows the pipeline "manifest parsing → normalized IR (model) → feature
 registry planning → fragment rendering → atomic write". Every generation
 capability implements a common `Feature` interface, can be switched on or off
@@ -26,10 +27,10 @@ capabilities grow without touching the renderer.
 
 ## Consequences
 
-- By default the tool generates the type declaration. `typeMode: existing`
-  lets users own the declaration while enumer generates constants and methods;
-  the Go compiler verifies that the type exists and matches. The generator still
-  does not load or type-check Go packages.
+- `typeMode: auto` (the default) detects an existing type declaration and emits
+  the type only when it is missing; `emit` and `existing` force the behavior.
+  Detection uses `go/parser` and is syntax-only; the generator still does not
+  load or type-check Go packages.
 - The YAML schema is a public contract and must be versioned, strictly
   validated and preserve source locations for diagnostics.
 - Adding a capability only requires registering a Feature; adding an artifact

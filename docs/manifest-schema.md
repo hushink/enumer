@@ -1,5 +1,7 @@
 # Manifest schema
 
+**English** | [简体中文](manifest-schema.zh-CN.md)
+
 An `enumer.yaml` file declares one or more enums and, optionally, additional
 template targets. The manifest is the single source of truth: `enumer` does not
 parse Go source files.
@@ -24,7 +26,7 @@ invalid values are reported with a file position and a stable diagnostic code.
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
-| `features` | list of strings | `[string, parse, valid, text]` | Base feature set. When omitted, the built-in default set is used; an explicit empty list disables all features. |
+| `features` | list of strings | `[string, parse, valid, text, names, values]` | Base feature set. When omitted, the built-in default set is used; an explicit empty list disables all features. |
 | `disableFeatures` | list of strings | `[]` | Features removed from the base set. Disabling `sql` also removes `sql:int` and `sql:null`; disabling `json` also removes `json:number`. |
 | `naming.prefix` | string | `type` | `type` prefixes constants with the enum name; `none` uses no prefix; `literal:<text>` uses a fixed prefix. |
 | `naming.identifier` | string | `camel` | `camel` converts value names to CamelCase; `raw` uses the name unchanged and requires a valid Go identifier. |
@@ -33,9 +35,9 @@ invalid values are reported with a file position and a stable diagnostic code.
 | `parse.caseSensitive` | bool | `true` | When false, parsing and alias matching are case-insensitive; value texts that differ only by case are rejected. |
 | `output.suffix` | string | `_enum.go` | Suffix for per-enum output files. `.go` is appended when missing. |
 | `output.dir` | string | `""` | Directory for per-enum output files, relative to the manifest directory. |
-| `comments` | string | `auto` | `auto` adds documentation comments when no user doc is present; `none` suppresses automatic comments but keeps user docs and deprecation notices. |
+| `comments` | string | `auto` | `auto` adds documentation comments when no user doc is present; `none` suppresses automatic comments but keeps user docs, comment overrides and deprecation notices. |
 | `allowDuplicateValues` | bool | `false` | Permit several names for the same numeric value. |
-| `typeMode` | string | `emit` | `emit` declares the enum type in the generated file; `existing` references a type declared by hand. |
+| `typeMode` | string | `auto` | `auto` detects an existing declaration and emits the type only when it is missing; `emit` always emits; `existing` never emits and requires a matching declaration. |
 
 ## `enums`
 
@@ -44,6 +46,8 @@ invalid values are reported with a file position and a stable diagnostic code.
 | `name` | string | required | Go type name. |
 | `type` | string | `string` | Underlying type: `string`, any signed integer type or any unsigned integer type. |
 | `doc` | string | `""` | Documentation comment for the type. |
+| `comment` | string | `""` | Comment override; wins over `doc`. |
+| `comments` | string | inherited | Per-enum `auto` or `none` comment mode. |
 | `package` | string | manifest package | Per-enum package override. Requires an explicit `output` unless the manifest is aggregated. |
 | `output` | string | derived | Per-enum output path, relative to the manifest directory. Must end with `.go`. |
 | `features` | list of strings | `[]` | Features added to the resolved defaults. |
@@ -73,6 +77,7 @@ values:
 | `value` | string or integer | For string enums, the canonical text (defaults to `name`). For numeric enums, the integer value (defaults to auto-increment). |
 | `number` | integer | Integer representation used by `sql:int` on string enums. Required for every value when `sql:int` is enabled. |
 | `doc` | string | Documentation comment for the generated constant. |
+| `comment` | string | Comment override; wins over `doc`. |
 | `aliases` | list of strings | Additional parseable texts. Aliases do not generate constants. |
 | `deprecated` | bool or string | Adds a Go `Deprecated:` comment. `true` uses "Do not use."; a string is used as the reason. |
 
@@ -152,27 +157,48 @@ Merge rules:
 
 See [examples/extends](../examples/extends) for a runnable example.
 
-## Existing types
+## Type declarations
 
-By default the generated file declares `type <Name> <UnderlyingType>`. Set
-`typeMode: existing` when the type is declared by hand:
+`typeMode` controls whether the generated file declares the enum type:
+
+- `auto` (default): scan the target package. Emit the type when no declaration
+  exists; reference an existing declaration when it does. Aliases, generic
+  types and underlying-type mismatches are errors.
+- `emit`: always emit the type. A declaration in another file is an error.
+- `existing`: never emit. The declaration must exist and match.
 
 ```yaml
-defaults:
-  typeMode: existing
-
 enums:
   - name: Color
     type: string
     values: [red, green, blue]
 ```
 
-The generated file then contains only the constants and methods. The
-hand-written declaration must exist in the same Go package and use the
-underlying type declared in the manifest. The Go compiler verifies the match;
-`enumer` does not parse Go source.
+```go
+// types.go
+package example
 
-See [examples/existing](../examples/existing) for a runnable example.
+type Color string
+```
+
+With `auto`, enumer detects the declaration and emits only the constants and
+methods. If the file is absent, it emits the type from the manifest. Detection
+uses a syntax-only `go/parser` scan; enumer does not load or type-check
+packages.
+
+See [examples/existing](../examples/existing) for a hand-written declaration.
+
+## Comments
+
+- `doc` and `comment` override generated comments; `comment` wins.
+- `comments: auto|none` controls automatic comments globally and per enum.
+- User comments are emitted even with `comments: none`.
+
+## Formatting
+
+Generated Go files and custom targets whose output path ends with `.go` are
+formatted with the standard library's `go/format.Source`. A custom target that
+outputs `.go` must render a complete Go file.
 
 ## Features
 
