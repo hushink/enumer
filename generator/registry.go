@@ -11,6 +11,7 @@ func DefaultRegistry() *Registry {
 		textFeature{},
 		jsonFeature{},
 		jsonNumberFeature{},
+		yamlFeature{},
 		sqlFeature{},
 		sqlIntFeature{},
 		sqlNullFeature{},

@@ -1,0 +1,14 @@
+version: 1
+package: yamlenum
+
+defaults:
+  features: [string, parse, valid, yaml]
+
+enums:
+  - name: Color
+    type: string
+    doc: Color is an example YAML-marshaled enumeration.
+    values:
+      - red
+      - green
+      - blue

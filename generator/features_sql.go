@@ -173,11 +173,25 @@ func (sqlNullFeature) Emit(e *model.EnumSpec) (Fragment, error) {
 	b.WriteString("// Value implements driver.Valuer.\n")
 	fmt.Fprintf(&b, "func (n Null%s) Value() (driver.Value, error) {\n", e.Name)
 	b.WriteString("\tif !n.Valid {\n\t\treturn nil, nil\n\t}\n")
-	b.WriteString("\treturn n.Enum.Value()\n}\n")
+	b.WriteString("\treturn n.Enum.Value()\n}\n\n")
+
+	b.WriteString("// MarshalJSON implements json.Marshaler.\n")
+	fmt.Fprintf(&b, "func (n Null%s) MarshalJSON() ([]byte, error) {\n", e.Name)
+	b.WriteString("\tif !n.Valid {\n\t\treturn []byte(\"null\"), nil\n\t}\n")
+	b.WriteString("\treturn json.Marshal(n.Enum)\n}\n\n")
+
+	b.WriteString("// UnmarshalJSON implements json.Unmarshaler.\n")
+	fmt.Fprintf(&b, "func (n *Null%s) UnmarshalJSON(data []byte) error {\n", e.Name)
+	b.WriteString("\tif string(data) == \"null\" {\n")
+	fmt.Fprintf(&b, "\t\tvar zero %s\n", e.Name)
+	b.WriteString("\t\tn.Enum = zero\n\t\tn.Valid = false\n\t\treturn nil\n\t}\n")
+	fmt.Fprintf(&b, "\tvar v %s\n", e.Name)
+	b.WriteString("\tif err := json.Unmarshal(data, &v); err != nil {\n\t\treturn err\n\t}\n")
+	b.WriteString("\tn.Enum = v\n\tn.Valid = true\n\treturn nil\n}\n")
 
 	return Fragment{
 		Code:    b.String(),
-		Imports: []model.Import{{Path: "database/sql/driver"}},
+		Imports: []model.Import{{Path: "database/sql/driver"}, {Path: "encoding/json"}},
 	}, nil
 }
 

@@ -409,6 +409,17 @@ func TestStatusBehavior(t *testing.T) {
 	if err != nil || v.(int64) != 10 {
 		t.Fatal("Null Value")
 	}
+	jsonData, jsonErr := json.Marshal(n)
+	if jsonErr != nil || string(jsonData) != "10" {
+		t.Fatalf("Null MarshalJSON: %s %v", jsonData, jsonErr)
+	}
+	var n2 NullStatus
+	if err := json.Unmarshal([]byte("null"), &n2); err != nil || n2.Valid {
+		t.Fatal("Null UnmarshalJSON null")
+	}
+	if err := json.Unmarshal([]byte("10"), &n2); err != nil || !n2.Valid || n2.Enum != StatusFailed {
+		t.Fatal("Null UnmarshalJSON value")
+	}
 }
 
 func TestFeatureBehaviors(t *testing.T) {

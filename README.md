@@ -346,6 +346,7 @@ declare the same type manually in Go source.
   flag, names, values and a Markdown custom target.
 - [examples/aggregate](examples/aggregate) — two enums in one generated file
   with a custom initialism.
+- [examples/yaml](examples/yaml) — YAML marshaling with the `yaml` feature.
 
 ## Design docs
 

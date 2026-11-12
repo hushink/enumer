@@ -4,6 +4,7 @@ package basic
 
 import (
 	"database/sql/driver"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
@@ -173,6 +174,31 @@ func (n NullStatus) Value() (driver.Value, error) {
 		return nil, nil
 	}
 	return n.Enum.Value()
+}
+
+// MarshalJSON implements json.Marshaler.
+func (n NullStatus) MarshalJSON() ([]byte, error) {
+	if !n.Valid {
+		return []byte("null"), nil
+	}
+	return json.Marshal(n.Enum)
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (n *NullStatus) UnmarshalJSON(data []byte) error {
+	if string(data) == "null" {
+		var zero Status
+		n.Enum = zero
+		n.Valid = false
+		return nil
+	}
+	var v Status
+	if err := json.Unmarshal(data, &v); err != nil {
+		return err
+	}
+	n.Enum = v
+	n.Valid = true
+	return nil
 }
 
 // StatusNames returns the names of all Status values in declaration order.
