@@ -8,6 +8,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 
 	"github.com/hushink/enumer/generator"
 	"github.com/hushink/enumer/internal/buildinfo"
@@ -94,7 +96,27 @@ Run "enumer" without a subcommand to generate from the current directory.`,
 	return root
 }
 
+// hasManifest reports whether dir contains a manifest that no-argument
+// discovery would use.
+func hasManifest(dir string) bool {
+	for _, name := range []string{"enumer.yaml", "enumer.yml"} {
+		if info, err := os.Stat(filepath.Join(dir, name)); err == nil && !info.IsDir() {
+			return true
+		}
+	}
+	return false
+}
+
 func loadManifests(paths []string) ([]*model.Manifest, diag.List) {
+	if len(paths) == 0 {
+		if cwd, err := os.Getwd(); err == nil && !hasManifest(cwd) {
+			if root, err := projectRoot(cwd); err == nil && root != cwd && hasManifest(root) {
+				paths = []string{root}
+			} else if ws, ok := workspaceRoot(cwd); ok && ws != cwd && hasManifest(ws) {
+				paths = []string{ws}
+			}
+		}
+	}
 	files, diags := manifest.Discover(paths)
 	if diags.HasErrors() {
 		return nil, diags

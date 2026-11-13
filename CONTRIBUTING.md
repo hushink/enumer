@@ -41,6 +41,8 @@ manifest parsing -> model (normalized IR) -> feature planning -> rendering -> at
 
 - `manifest` decodes and validates YAML, resolves defaults and produces `model`.
 - `model` is the public, source-independent IR.
+- `schema` embeds the JSON Schema written by `enumer init` and published for
+  editors.
 - `generator` validates feature sets, renders fragments, checks symbol and output
   collisions, renders custom targets and writes files.
 - `internal/cli` is a thin command layer.

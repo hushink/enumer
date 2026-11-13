@@ -6,13 +6,16 @@ An `enumer.yaml` file declares one or more enums and, optionally, additional
 template targets. The manifest is the single source of truth: `enumer` does not
 parse Go source files.
 
-Every manifest is strictly decoded. Unknown fields, unsupported versions and
-invalid values are reported with a file position and a stable diagnostic code.
+Every manifest is strictly decoded. The optional `$schema` field is editor
+metadata and is ignored by the generator. Unknown fields, unsupported versions
+and invalid values are reported with a file position and a stable diagnostic
+code.
 
 ## Top level
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
+| `$schema` | string | `""` | Optional JSON Schema URL or relative path for editor completion and validation. `enumer` ignores it. |
 | `version` | integer | `1` | Manifest schema version. Only `1` is supported. |
 | `extends` | string | `""` | Path to a base manifest whose `defaults` are inherited. Only `defaults` is inherited. |
 | `package` | string | inferred | Go package name. Inferred from the directory's Go files when omitted; required when the directory has no Go files. |
@@ -21,6 +24,43 @@ invalid values are reported with a file position and a stable diagnostic code.
 | `defaults` | mapping | — | Settings shared by every enum in this manifest. |
 | `enums` | list | — | Enum declarations. At least one is required. |
 | `targets` | list | — | Custom template outputs. |
+
+Place `enumer.yaml` in the nearest project root: the directory containing
+`go.mod`, or—when there is no enclosing module—the directory containing
+`go.work`. `enumer init` finds that root and writes the manifest and
+`enumer.schema.json` there; use `--local` to write them in the current
+directory instead. In a multi-module workspace, module-root manifests take
+precedence and a workspace-root manifest is the fallback. Manifests in other
+directories are still discovered by `./...`, which is useful for nested modules
+and independent packages.
+
+## Editor support
+
+`enumer init` writes `enumer.schema.json` next to the manifest in the module
+root and adds a comment and a key at the top of `enumer.yaml`:
+
+```yaml
+# $schema: ./enumer.schema.json
+$schema: ./enumer.schema.json
+```
+
+The comment is recognized by IntelliJ IDEA's YAML support; the key is useful for
+other editors and JSON Schema-aware tools. Both point at the local schema, so
+completion and validation work offline. Commit `enumer.schema.json` with the
+manifest for the local path to keep working. The schema is also published at
+[schema/enumer.schema.json](../schema/enumer.schema.json) and at
+`https://raw.githubusercontent.com/hushink/enumer/main/schema/enumer.schema.json`.
+
+IntelliJ IDEA can associate the schema in three ways: a global JSON Schema
+mapping in `Settings` → `Languages & Frameworks` → `Schemas and DTDs` → `JSON
+Schema Mappings`, the file-level `$schema` lines above, or the `Schema` switcher
+in the editor's bottom-right status bar. See the
+[README editor support section](../README.md#editor-support) for the exact
+steps and the file path pattern.
+
+The schema covers completion and structural validation. The generator remains
+the authority for semantic checks that JSON Schema cannot express, such as
+duplicate values, feature conflicts and `sql:int` number coverage.
 
 ## `defaults`
 

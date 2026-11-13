@@ -5,13 +5,14 @@
 一个 `enumer.yaml` 文件声明一个或多个枚举，并可选声明附加的模板目标。清单是
 唯一真相源；`enumer` 不解析业务 Go 源码。
 
-清单采用严格解码。未知字段、不支持的版本和非法取值都会带文件位置与稳定错误码
-报告。
+清单采用严格解码。可选的 `$schema` 字段是编辑器元数据，生成器会忽略它；
+未知字段、不支持的版本和非法取值都会带文件位置与稳定错误码报告。
 
 ## 顶层字段
 
 | 字段 | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
+| `$schema` | string | `""` | 可选的 JSON Schema URL 或相对路径，供编辑器补全与校验使用。`enumer` 会忽略它。 |
 | `version` | integer | `1` | 清单 schema 版本。目前只支持 `1`。 |
 | `extends` | string | `""` | 基础清单路径，继承其 `defaults`。只继承 `defaults`。 |
 | `package` | string | 推断 | Go 包名。省略时从目录内 Go 文件推断；目录内没有 Go 文件时必须显式设置。 |
@@ -20,6 +21,37 @@
 | `defaults` | mapping | — | 本清单所有枚举共享的默认配置。 |
 | `enums` | list | — | 枚举声明。至少需要一个。 |
 | `targets` | list | — | 自定义模板输出。 |
+
+将 `enumer.yaml` 放在最近的项目根目录：有 `go.mod` 时使用模块根目录；没有所属
+模块时使用 `go.work` 所在目录。`enumer init` 会查找该目录并写入清单与
+`enumer.schema.json`；如需写入当前目录，使用 `--local`。在多模块工作区中，
+模块根清单优先，工作区根清单作为回退。其他目录中的清单仍会被 `./...` 发现，
+适用于嵌套模块和独立包。
+
+## 编辑器支持
+
+`enumer init` 会在项目根目录的清单旁写入 `enumer.schema.json`，并在
+`enumer.yaml` 顶部加入一行注释和一个键：
+
+```yaml
+# $schema: ./enumer.schema.json
+$schema: ./enumer.schema.json
+```
+
+注释行可被 IntelliJ IDEA 的 YAML 支持识别；键可供其他编辑器和 JSON Schema 工具
+使用。两者都指向本地 Schema，因此补全与校验可以离线工作。请将
+`enumer.schema.json` 与清单一起提交，以保证本地路径持续有效。Schema 也发布在
+[schema/enumer.schema.json](../schema/enumer.schema.json) 与
+`https://raw.githubusercontent.com/hushink/enumer/main/schema/enumer.schema.json`。
+
+IntelliJ IDEA 支持三种关联方式：在
+`Settings` → `Languages & Frameworks` → `Schemas and DTDs` →
+`JSON Schema Mappings` 中配置全局映射；使用上面的文件内 `$schema` 行；或使用
+编辑器右下角状态栏的 `Schema` 切换器。具体步骤与文件匹配模式见
+[README 编辑器支持章节](../README.zh-CN.md#编辑器支持)。
+
+Schema 覆盖补全和结构校验；生成器仍是语义校验的权威来源，例如重复取值、特性冲突
+和 `sql:int` 的 `number` 覆盖。
 
 ## `defaults`
 

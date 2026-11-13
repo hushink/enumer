@@ -20,6 +20,10 @@ enums:
       - blue
 ```
 
+`enumer init` 还会写入 `enumer.schema.json`，并在清单中加入 `$schema` 行，供
+编辑器补全与校验使用；生成器会忽略它们。IntelliJ IDEA 的映射方式见
+[编辑器支持](../README.zh-CN.md#编辑器支持)。
+
 `enumer generate` 会在清单旁生成 `color_enum.go`。生成文件包含 `Color` 类型、
 `ColorRed`/`ColorGreen`/`ColorBlue`，以及 String、Parse、IsValid、文本序列化、
 names 与 values。
@@ -29,9 +33,32 @@ names 与 values。
 
 ## 清单放置与发现
 
-- 任意目录都可以放置 `enumer.yaml`。
-- `enumer generate ./...` 递归发现 `enumer.yaml` 和 `enumer.yml`，跳过
-  `vendor/`、`testdata/`、隐藏目录和 `_` 前缀目录。
+- 将 `enumer.yaml` 放在最近的项目根目录：有 `go.mod` 时使用模块根目录；没有
+  所属模块时使用 `go.work` 所在目录。`enumer init` 会查找该目录并写入清单与
+  `enumer.schema.json`，即使在子目录中执行也是如此；如需刻意创建包内局部清单，
+  使用 `--local`。
+- 在多模块工作区中，模块根清单优先；某个模块没有清单时，会回退到工作区根
+  清单。在工作区根执行 `enumer init` 可创建工作区级清单。枚举的 `package` 与
+  `output` 可以指向模块子目录。
+- 如果项目根目录没有 Go 文件（工作区根目录常见），请在 `enumer init` 时传入
+  `--package`，或在清单中设置 `package`。
+- 从项目根清单向子包生成枚举时，设置枚举的 `package` 与 `output`：
+
+  ```yaml
+  enums:
+    - name: Color
+      package: color
+      output: color/color_enum.go
+      values: [red, green, blue]
+  ```
+
+  如果还有枚举留在根包，设置顶层 `package` 作为默认值；带 `package` 覆盖的
+  枚举仍需显式 `output`。
+- 清单也可以放在其他目录，例如嵌套模块或独立包中。`enumer generate ./...`
+  会递归发现 `enumer.yaml` 和 `enumer.yml`，跳过 `vendor/`、`testdata/`、
+  隐藏目录和 `_` 前缀目录。
+- 不传路径参数时，`enumer generate` 与 `enumer check` 依次使用当前目录清单、
+  最近的模块根清单、工作区根清单。在工作区根执行 `./...` 可处理全部清单。
 - 显式传入文件路径时，文件名不要求是 `enumer.yaml`。
 
 ## 枚举与取值

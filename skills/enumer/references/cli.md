@@ -50,11 +50,12 @@ most reproducible option; commit `go.mod` and `go.sum`.
 enumer [generate] [paths...]   # generate; no subcommand behaves like generate
 enumer generate [paths...]     # explicit generate; alias: gen
 enumer check [paths...]        # verify generated files are up to date
-enumer init                    # create a sample enumer.yaml
+enumer init                    # create a sample enumer.yaml and schema in the project root
 enumer version                 # print the version
 ```
 
-With no paths, the command uses the current directory.
+With no paths, commands resolve a manifest from the current directory, the
+nearest module root, then a workspace root.
 
 ### `generate`
 
@@ -98,14 +99,25 @@ and generated files that were edited by hand.
 enumer init
 enumer init --package order
 enumer init --force
+enumer init --local
 ```
 
-Creates `enumer.yaml` in the current directory with a sample string enum and a
-sample numeric enum. It also creates `templates/README.md` describing custom
-targets.
+Creates `enumer.yaml` in the nearest project root—the directory containing
+`go.mod`, or `go.work` when there is no enclosing module—with a sample string
+enum and a sample numeric enum. It also writes `enumer.schema.json` (the JSON
+Schema used by editors) and `templates/README.md` describing custom targets.
+The manifest starts with both `# $schema: ./enumer.schema.json` and
+`$schema: ./enumer.schema.json` for editor completion; the generator ignores
+them. Keep `enumer.schema.json` next to the manifest and commit both. For
+IntelliJ IDEA, the schema works with a global JSON Schema mapping (`enumer.yaml`
+/ `enumer.yml` file patterns), the file-level `$schema` lines, or the
+status-bar schema switcher.
 
 - `--package` writes a `package:` field.
-- `--force` overwrites an existing `enumer.yaml` and template README.
+- `--force` overwrites an existing `enumer.yaml`, schema file and template
+  README.
+- `--local` writes in the current directory instead of the project root. Use it
+  only for a deliberate package-local manifest.
 
 For a focused task, writing the manifest directly is often cleaner than
 `init`, which adds sample enums you may not want.
@@ -127,6 +139,13 @@ A path can be:
 - a manifest file, even if it is not named `enumer.yaml`;
 - a directory containing `enumer.yaml` or `enumer.yml`;
 - `./...` (or any `...` pattern) to recurse.
+
+Place the manifest in the nearest project root: the `go.mod` directory, or the
+`go.work` directory when there is no enclosing module. Module-root manifests
+take precedence; a workspace-root manifest is the fallback. With no paths,
+commands use the current directory's manifest, then the nearest module-root
+manifest, then a workspace-root manifest. `enumer generate ./...` discovers
+every manifest under the current tree.
 
 Discovery rules:
 
@@ -157,6 +176,7 @@ Command-specific flags:
 | `check` | `--diff` | Print unified diffs for stale outputs. |
 | `init` | `--package` | Go package name to write into the manifest. |
 | `init` | `--force` | Overwrite existing files. |
+| `init` | `--local` | Write in the current directory instead of the project root. |
 
 Examples:
 

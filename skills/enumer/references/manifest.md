@@ -25,6 +25,21 @@ stable diagnostic code.
 
 ## File names and discovery
 
+- Place the manifest in the nearest project root: the directory containing
+  `go.mod`, or `go.work` when there is no enclosing module. `enumer init` does
+  this by default, even from a subdirectory; `--local` opts out. Module-root
+  manifests take precedence; a workspace-root manifest is the fallback.
+- A project-root manifest can target a subpackage/module with per-enum
+  `package` and `output`:
+
+  ```yaml
+  enums:
+    - name: Color
+      package: color
+      output: color/color_enum.go
+      values: [red, green, blue]
+  ```
+
 - A manifest may be named `enumer.yaml` or `enumer.yml`.
 - `enumer generate ./...` discovers manifests recursively. It skips `vendor/`,
   `testdata/`, hidden directories and directories whose names start with `_`.
@@ -37,6 +52,7 @@ stable diagnostic code.
 
 | Field | Type | Default | Description |
 | --- | --- | --- | --- |
+| `$schema` | string | `""` | Optional JSON Schema URL or relative path for editor completion. `enumer` ignores it. |
 | `version` | integer | `1` | Schema version. Omitted means `1`; only `1` is supported. |
 | `extends` | string | `""` | Path to another manifest whose `defaults` are inherited. |
 | `package` | string | inferred | Go package name. Inferred from Go files in the manifest directory; set it when the directory has no Go files. |

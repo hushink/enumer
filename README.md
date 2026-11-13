@@ -45,9 +45,16 @@ enumer init --package example
 enumer generate
 ```
 
+`enumer init` writes the manifest and schema to the nearest project root: the
+directory containing `go.mod`, or `go.work` when there is no enclosing module.
+Pass `--package` when that directory has no Go files, and use `--local` to keep
+the files in the current directory instead.
+
 `enumer.yaml`:
 
 ```yaml
+# $schema: ./enumer.schema.json
+$schema: ./enumer.schema.json
 version: 1
 package: example
 
@@ -79,6 +86,9 @@ enums:
       - name: failed
         value: 10
 ```
+
+`enumer init` also writes `enumer.schema.json` and adds the `$schema` lines for
+editor completion; the generator ignores them.
 
 `enumer generate` writes `color_enum.go` and `status_enum.go` next to the
 manifest:
@@ -132,9 +142,12 @@ fmt.Println(c) // GREEN
 A manifest has a version, an optional package name, defaults, a list of enums
 and an optional list of custom targets. See the
 [configuration guide](docs/configuration.md) and
-[docs/manifest-schema.md](docs/manifest-schema.md) for the full reference.
+[docs/manifest-schema.md](docs/manifest-schema.md) for the full reference. The
+JSON Schema is at [schema/enumer.schema.json](schema/enumer.schema.json); see
+[Editor support](#editor-support) for IntelliJ IDEA and other editors.
 
 ```yaml
+$schema: ./enumer.schema.json # optional; written by enumer init
 version: 1
 # extends: ../base.yaml # optional shared defaults
 
@@ -366,12 +379,14 @@ values and values that are not powers of two.
 ```sh
 enumer [generate] [paths...]   # generate; no subcommand behaves like generate
 enumer check [paths...]        # verify generated files are up to date
-enumer init                    # create a sample enumer.yaml
+enumer init                    # create a sample enumer.yaml and schema in the project root
 enumer version                 # print the version
 ```
 
 Paths may be manifest files, directories containing `enumer.yaml`, or
-`./...` for recursion.
+`./...` for recursion. With no paths, commands use the current directory's
+manifest, then the nearest module-root manifest, then a workspace-root
+manifest.
 
 Global flags:
 
@@ -381,7 +396,7 @@ Global flags:
 - `--no-prune` — keep generated files for enums that are no longer declared.
 
 `generate` also accepts `--dry-run`. `check` accepts `--diff` to print unified
-diffs for stale outputs. `init` accepts `--package` and `--force`.
+diffs for stale outputs. `init` accepts `--package`, `--force` and `--local`.
 
 Exit codes:
 
@@ -488,6 +503,43 @@ g := generator.New(generator.WithRegistry(registry))
 The trade-off is that the generated file owns the type declaration: do not
 declare the same type manually in Go source.
 
+## Editor support
+
+`enumer init` writes a local `enumer.schema.json` next to `enumer.yaml` in the
+project root and adds two lines at the top of the manifest:
+
+```yaml
+# $schema: ./enumer.schema.json
+$schema: ./enumer.schema.json
+```
+
+The comment and the key cover both editor styles; the generator ignores both.
+Commit `enumer.schema.json` together with `enumer.yaml` so editors can resolve
+the local path. The schema is also published at
+[schema/enumer.schema.json](schema/enumer.schema.json) and at
+`https://raw.githubusercontent.com/hushink/enumer/main/schema/enumer.schema.json`;
+point `$schema` at the URL if the local file is not committed.
+
+IntelliJ IDEA supports three ways to associate the schema, and all of them work
+with the generated files:
+
+1. **Global mapping** — `Settings` → `Languages & Frameworks` → `Schemas and
+   DTDs` → `JSON Schema Mappings`. Add `enumer.schema.json` (or the raw URL) and
+   use the file path pattern `enumer.yaml`; add `enumer.yml` separately if you
+   use that extension.
+2. **File-level `$schema`** — generated manifests already contain the comment
+   and key shown above. For a manifest created by hand, add the same two lines,
+   or point `$schema` at the raw URL.
+3. **Status bar** — open `enumer.yaml` and click the `Schema` switcher in the
+   editor's bottom-right corner to pick the schema or create a mapping.
+
+For inline validation errors, keep `Settings` → `Editor` → `Inspections` →
+`YAML` → `Schema validation` enabled.
+
+The generator remains the authority for semantic checks that JSON Schema cannot
+express, such as duplicate values, feature conflicts and `sql:int` number
+coverage. The schema is intended for completion and structural validation.
+
 ## Agent skill
 
 This repository ships an [Agent Skill](https://skills.sh) that teaches coding
@@ -561,6 +613,7 @@ internal/cli      command line wiring
 internal/diag     structured diagnostics
 internal/naming   identifier conversion
 internal/sink     atomic file writes
+schema            embedded JSON Schema for enumer.yaml
 manifest          YAML schema, loading, validation and normalization
 model             public normalized IR
 generator         features, rendering, targets and the public generator API

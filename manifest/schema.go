@@ -13,6 +13,7 @@ import (
 // fileSchema mirrors the YAML manifest. Pointer fields distinguish "absent"
 // from an explicit zero value.
 type fileSchema struct {
+	SchemaURL string         `yaml:"$schema"`
 	Version   int            `yaml:"version"`
 	Extends   string         `yaml:"extends"`
 	Package   string         `yaml:"package"`

@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/hushink/enumer/model"
+	"github.com/hushink/enumer/schema"
 	"github.com/stretchr/testify/require"
 )
 
@@ -526,4 +527,20 @@ enums:
 	_, diags := Load(path)
 	require.True(t, diags.HasErrors())
 	require.Contains(t, diags.Format(), "auto-increment overflows")
+}
+
+func TestLoadSchemaURL(t *testing.T) {
+	dir := t.TempDir()
+	path := writeManifest(t, dir, `$schema: `+schema.URL+`
+version: 1
+package: sample
+
+enums:
+  - name: Color
+    values: [red, green]
+`)
+	m, diags := Load(path)
+	require.False(t, diags.HasErrors(), diags.Format())
+	require.Len(t, m.Enums, 1)
+	require.Equal(t, "Color", m.Enums[0].Name)
 }

@@ -7,12 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-13
+
 ### Added
 
+- JSON Schema for `enumer.yaml` at `schema/enumer.schema.json`, embedded in the
+  CLI. `enumer init` writes `enumer.schema.json` and adds `$schema` comment and
+  key lines for editor completion and validation. The local schema supports
+  IntelliJ IDEA global JSON Schema mappings, file-level `$schema` and the
+  status-bar schema switcher.
+- A public `schema` package that exposes the embedded JSON Schema.
+- Workspace-aware project root resolution: `enumer init` and no-argument
+  `generate`/`check` consider both `go.mod` and `go.work`. Module-root
+  manifests take precedence over workspace-root manifests.
 - An Agent Skill (`skills/enumer/`) compatible with skills.sh and the Agent
   Skills specification, with references for the manifest, features, CLI and
   recipes, plus `skills.sh.json` catalog metadata and README install
   instructions.
+
+### Changed
+
+- `enumer init` now writes to the nearest project root (`go.mod`, or `go.work`
+  when there is no enclosing module) instead of always the current directory.
+  Use `--local` to keep the previous current-directory behavior.
+- With no path arguments, `generate` and `check` fall back from the current
+  directory to the module root and then the workspace root.
+
+## [0.1.0] - 2026-11-13
+
+### Added
+
 - YAML manifest as the single source of truth for type declarations, values and
   settings.
 - String and integer enums (`int`, `int8`…`int64`, `uint`, `uint8`…`uint64`).

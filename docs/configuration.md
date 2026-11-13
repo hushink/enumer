@@ -20,6 +20,10 @@ enums:
       - blue
 ```
 
+`enumer init` also writes `enumer.schema.json` and adds `$schema` lines to the
+manifest for editor completion and validation. The generator ignores them; see
+[Editor support](../README.md#editor-support) for IntelliJ IDEA mappings.
+
 `enumer generate` writes `color_enum.go` next to the manifest. The generated
 file contains the `Color` type, `ColorRed`/`ColorGreen`/`ColorBlue`, String,
 Parse, IsValid, text marshaling, names and values.
@@ -29,10 +33,39 @@ from the package clause. When in doubt, set it explicitly.
 
 ## Where manifests live
 
-- Any directory can contain an `enumer.yaml`.
-- `enumer generate ./...` discovers `enumer.yaml` and `enumer.yml` recursively,
-  skipping `vendor/`, `testdata/`, hidden directories and `_`-prefixed
-  directories.
+- Place `enumer.yaml` in the nearest project root: the directory containing
+  `go.mod`, or—when there is no enclosing module—the directory containing
+  `go.work`. `enumer init` finds that root and writes the manifest and
+  `enumer.schema.json` there, even when run from a subdirectory. Use `--local`
+  to deliberately create a package-local manifest.
+- In a workspace with multiple modules, a module-root manifest takes
+  precedence. A workspace-root manifest is the fallback for modules that do not
+  have one; run `enumer init` at the workspace root to create a workspace-level
+  manifest. Enum `package` and `output` paths can target module
+  subdirectories.
+- If the project root has no Go files—common at a workspace root—pass
+  `--package` to `enumer init` or set `package` in the manifest.
+- To generate an enum into a subpackage from the project-root manifest, set the
+  enum's `package` and `output`:
+
+  ```yaml
+  enums:
+    - name: Color
+      package: color
+      output: color/color_enum.go
+      values: [red, green, blue]
+  ```
+
+  If some enums stay in the root package, set a top-level `package` as their
+  default; per-enum `package` overrides still need an explicit `output`.
+- Manifests can also live in other directories, for example in nested modules
+  or independent packages. `enumer generate ./...` discovers `enumer.yaml` and
+  `enumer.yml` recursively, skipping `vendor/`, `testdata/`, hidden directories
+  and `_`-prefixed directories.
+- With no path arguments, `enumer generate` and `enumer check` use the current
+  directory's manifest, then the nearest module-root manifest, then a
+  workspace-root manifest. Run `./...` from the workspace root to process every
+  manifest.
 - An explicit file path is accepted even when it is not named `enumer.yaml`.
 
 ## Enums and values

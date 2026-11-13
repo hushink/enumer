@@ -7,8 +7,10 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
+	"github.com/hushink/enumer/schema"
 	"github.com/stretchr/testify/require"
 )
 
@@ -20,6 +22,14 @@ func TestInitGenerateCheck(t *testing.T) {
 	code := Execute([]string{"init", "--package", "sample"}, &stdout, &stderr)
 	require.Equal(t, 0, code, stderr.String())
 	require.FileExists(t, filepath.Join(dir, "enumer.yaml"))
+
+	manifestSource, err := os.ReadFile(filepath.Join(dir, "enumer.yaml"))
+	require.NoError(t, err)
+	require.True(t, strings.HasPrefix(string(manifestSource), "# $schema: "+initSchemaRef+"\n$schema: "+initSchemaRef+"\n"))
+
+	schemaSource, err := os.ReadFile(filepath.Join(dir, schema.FileName))
+	require.NoError(t, err)
+	require.Equal(t, schema.Bytes(), schemaSource)
 
 	stdout.Reset()
 	stderr.Reset()
@@ -81,6 +91,118 @@ func TestInitExistingFile(t *testing.T) {
 	stderr.Reset()
 	code = Execute([]string{"init", "--force", "--package", "sample"}, &stdout, &stderr)
 	require.Equal(t, 0, code, stderr.String())
+	require.FileExists(t, filepath.Join(dir, schema.FileName))
+}
+
+func TestInitUsesModuleRoot(t *testing.T) {
+	root := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(root, "go.mod"), []byte("module example.com/sample\n\ngo 1.27\n"), 0o644))
+	sub := filepath.Join(root, "sub")
+	require.NoError(t, os.MkdirAll(sub, 0o755))
+	t.Chdir(sub)
+
+	var stdout, stderr bytes.Buffer
+	code := Execute([]string{"init", "--package", "sample"}, &stdout, &stderr)
+	require.Equal(t, 0, code, stderr.String())
+	require.FileExists(t, filepath.Join(root, "enumer.yaml"))
+	require.FileExists(t, filepath.Join(root, schema.FileName))
+
+	_, err := os.Stat(filepath.Join(sub, "enumer.yaml"))
+	require.True(t, os.IsNotExist(err))
+
+	stdout.Reset()
+	stderr.Reset()
+	code = Execute([]string{"generate"}, &stdout, &stderr)
+	require.Equal(t, 0, code, stderr.String())
+	require.FileExists(t, filepath.Join(root, "color_enum.go"))
+	require.FileExists(t, filepath.Join(root, "status_enum.go"))
+}
+
+func TestInitUsesWorkspaceRoot(t *testing.T) {
+	root := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(root, "go.work"), []byte("go 1.27\n"), 0o644))
+	sub := filepath.Join(root, "services", "order")
+	require.NoError(t, os.MkdirAll(sub, 0o755))
+	t.Chdir(sub)
+
+	var stdout, stderr bytes.Buffer
+	code := Execute([]string{"init", "--package", "order"}, &stdout, &stderr)
+	require.Equal(t, 0, code, stderr.String())
+	require.FileExists(t, filepath.Join(root, "enumer.yaml"))
+	require.FileExists(t, filepath.Join(root, schema.FileName))
+
+	_, err := os.Stat(filepath.Join(sub, "enumer.yaml"))
+	require.True(t, os.IsNotExist(err))
+
+	stdout.Reset()
+	stderr.Reset()
+	code = Execute([]string{"generate"}, &stdout, &stderr)
+	require.Equal(t, 0, code, stderr.String())
+	require.FileExists(t, filepath.Join(root, "color_enum.go"))
+}
+
+func TestInitPrefersModuleRootInWorkspace(t *testing.T) {
+	ws := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(ws, "go.work"), []byte("go 1.27\n\nuse ./mod\n"), 0o644))
+	mod := filepath.Join(ws, "mod")
+	require.NoError(t, os.MkdirAll(mod, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(mod, "go.mod"), []byte("module example.com/mod\n\ngo 1.27\n"), 0o644))
+	sub := filepath.Join(mod, "sub")
+	require.NoError(t, os.MkdirAll(sub, 0o755))
+	t.Chdir(sub)
+
+	var stdout, stderr bytes.Buffer
+	code := Execute([]string{"init", "--package", "sample"}, &stdout, &stderr)
+	require.Equal(t, 0, code, stderr.String())
+	require.FileExists(t, filepath.Join(mod, "enumer.yaml"))
+	require.FileExists(t, filepath.Join(mod, schema.FileName))
+
+	_, err := os.Stat(filepath.Join(ws, "enumer.yaml"))
+	require.True(t, os.IsNotExist(err))
+}
+
+func TestGenerateFallsBackToWorkspaceManifest(t *testing.T) {
+	ws := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(ws, "go.work"), []byte("go 1.27\n\nuse ./mod\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(ws, "enumer.yaml"), []byte(`version: 1
+package: sample
+enums:
+  - name: Color
+    values: [red, green]
+`), 0o644))
+	mod := filepath.Join(ws, "mod")
+	require.NoError(t, os.MkdirAll(mod, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(mod, "go.mod"), []byte("module example.com/mod\n\ngo 1.27\n"), 0o644))
+	sub := filepath.Join(mod, "sub")
+	require.NoError(t, os.MkdirAll(sub, 0o755))
+	t.Chdir(sub)
+
+	var stdout, stderr bytes.Buffer
+	code := Execute([]string{"generate"}, &stdout, &stderr)
+	require.Equal(t, 0, code, stderr.String())
+	require.FileExists(t, filepath.Join(ws, "color_enum.go"))
+
+	stdout.Reset()
+	stderr.Reset()
+	code = Execute([]string{"check"}, &stdout, &stderr)
+	require.Equal(t, 0, code, stderr.String())
+}
+
+func TestInitLocal(t *testing.T) {
+	root := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(root, "go.mod"), []byte("module example.com/sample\n\ngo 1.27\n"), 0o644))
+	sub := filepath.Join(root, "sub")
+	require.NoError(t, os.MkdirAll(sub, 0o755))
+	t.Chdir(sub)
+
+	var stdout, stderr bytes.Buffer
+	code := Execute([]string{"init", "--local", "--package", "sample"}, &stdout, &stderr)
+	require.Equal(t, 0, code, stderr.String())
+	require.FileExists(t, filepath.Join(sub, "enumer.yaml"))
+	require.FileExists(t, filepath.Join(sub, schema.FileName))
+
+	_, err := os.Stat(filepath.Join(root, "enumer.yaml"))
+	require.True(t, os.IsNotExist(err))
 }
 
 func TestDryRunDoesNotWrite(t *testing.T) {

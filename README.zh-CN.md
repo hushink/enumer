@@ -45,9 +45,15 @@ enumer init --package example
 enumer generate
 ```
 
+`enumer init` 会把清单与 Schema 写入最近的项目根目录：有 `go.mod` 时写入模块根
+目录；没有所属模块时写入 `go.work` 所在目录。该目录没有 Go 文件时请传入
+`--package`；如需写入当前目录，使用 `--local`。
+
 `enumer.yaml`：
 
 ```yaml
+# $schema: ./enumer.schema.json
+$schema: ./enumer.schema.json
 version: 1
 package: example
 
@@ -79,6 +85,9 @@ enums:
       - name: failed
         value: 10
 ```
+
+`enumer init` 还会写入 `enumer.schema.json`，并在清单顶部加入 `$schema` 行，
+供编辑器补全使用；生成器会忽略它们。
 
 `enumer generate` 会在清单旁生成 `color_enum.go` 与 `status_enum.go`：
 
@@ -131,9 +140,12 @@ fmt.Println(c) // GREEN
 
 清单包含版本、可选包名、默认配置、枚举列表和可选的自定义目标。完整字段说明见
 [配置指南](docs/configuration.zh-CN.md) 与
-[清单 schema](docs/manifest-schema.zh-CN.md)。
+[清单 schema](docs/manifest-schema.zh-CN.md)。JSON Schema 位于
+[schema/enumer.schema.json](schema/enumer.schema.json)；编辑器配置见
+[编辑器支持](#编辑器支持)。
 
 ```yaml
+$schema: ./enumer.schema.json # 可选；enumer init 会自动写入
 version: 1
 # extends: ../base.yaml # 可选：继承共享默认配置
 
@@ -351,11 +363,12 @@ x.Flags()                       // []Permission{PermissionRead, PermissionWrite}
 ```sh
 enumer [generate] [paths...]   # 生成；无子命令等价于 generate
 enumer check [paths...]        # 校验生成物是否最新
-enumer init                    # 创建示例 enumer.yaml
+enumer init                    # 在项目根创建示例 enumer.yaml 与 schema
 enumer version                 # 打印版本
 ```
 
-路径可以是清单文件、包含 `enumer.yaml` 的目录，或 `./...` 递归模式。
+路径可以是清单文件、包含 `enumer.yaml` 的目录，或 `./...` 递归模式。不传路径时，
+命令依次使用当前目录的清单、最近的模块根清单、工作区根清单。
 
 全局参数：
 
@@ -365,7 +378,7 @@ enumer version                 # 打印版本
 - `--no-prune`：保留已不再声明的枚举所对应的生成文件。
 
 `generate` 额外支持 `--dry-run`；`check` 支持 `--diff` 输出统一 diff。
-`init` 支持 `--package` 与 `--force`。
+`init` 支持 `--package`、`--force` 与 `--local`。
 
 退出码：
 
@@ -441,6 +454,38 @@ go generate ./...
 - 三方声明见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 - CI 使用 `govulncheck` 检查已知漏洞。
 
+## 编辑器支持
+
+`enumer init` 会在项目根目录的 `enumer.yaml` 旁写入本地 `enumer.schema.json`，
+并在清单顶部加入两行：
+
+```yaml
+# $schema: ./enumer.schema.json
+$schema: ./enumer.schema.json
+```
+
+注释行和键分别兼容不同编辑器的识别方式；生成器会忽略它们。请将
+`enumer.schema.json` 与 `enumer.yaml` 一起提交，便于编辑器解析本地路径。Schema
+也发布在 [schema/enumer.schema.json](schema/enumer.schema.json) 与
+`https://raw.githubusercontent.com/hushink/enumer/main/schema/enumer.schema.json`；
+如果本地文件未提交，可将 `$schema` 指向该 URL。
+
+IntelliJ IDEA 支持三种关联方式，均可用于生成的文件：
+
+1. **全局映射** —— `Settings` → `Languages & Frameworks` → `Schemas and DTDs`
+   → `JSON Schema Mappings`。添加 `enumer.schema.json`（或远程 URL），文件匹配
+   模式填 `enumer.yaml`；如果使用 `.yml` 扩展名，再单独添加 `enumer.yml`。
+2. **文件内 `$schema`** —— 生成的清单已包含上面的注释行和键。手写清单时加上
+   这两行，或将 `$schema` 指向远程 URL。
+3. **状态栏** —— 打开 `enumer.yaml`，点击编辑器右下角的 `Schema` 切换器，选择
+   该 Schema 或新建映射。
+
+如需实时显示校验错误，请确认
+`Settings` → `Editor` → `Inspections` → `YAML` → `Schema validation` 已启用。
+
+生成器仍是语义校验的权威来源，例如重复取值、特性冲突和 `sql:int` 的 `number`
+覆盖；JSON Schema 主要用于补全和结构校验。
+
 ## Agent 技能
 
 本仓库附带一个 [Agent Skill](https://skills.sh)，用于指导编码助手正确使用
@@ -493,6 +538,7 @@ internal/cli      命令行装配
 internal/diag     结构化诊断
 internal/naming   标识符转换
 internal/sink     原子文件写入
+schema            enumer.yaml 的内嵌 JSON Schema
 manifest          YAML schema、加载、校验与规范化
 model             公开的规范化 IR
 generator         能力、渲染、目标与公开生成器 API

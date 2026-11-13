@@ -19,7 +19,7 @@ compatibility: >-
   requires Go 1.20+. The yaml feature adds a dependency on gopkg.in/yaml.v3.
 metadata:
   author: hushink
-  version: "0.1.0"
+  version: "0.2.0"
   repository: https://github.com/hushink/enumer
 ---
 
@@ -47,20 +47,39 @@ them by hand.
 
 ## Workflow
 
-1. **Inspect the target package.**
-   - Locate the Go package directory and its package name. `go list -f
+1. **Inspect the module/workspace and target package.**
+   - Find the nearest project root: the directory containing `go.mod`, or
+     `go.work` when there is no enclosing module.
+   - Locate the target Go package directory and its package name. `go list -f
      '{{.Name}}' .` is reliable; reading a `.go` file also works.
-   - Check for an existing `enumer.yaml` or `enumer.yml` in that directory.
+   - Check for an existing `enumer.yaml` or `enumer.yml` at the project root
+     (and in the target package for per-package layouts). Module-root manifests
+     take precedence over a workspace-root manifest.
    - Check whether an enum type already exists: `type <Name> <underlying>` in a
-     non-test `.go` file.
+     non-test `.go` file in the output package.
    - Check whether `enumer` or `go tool enumer` is available.
 2. **Choose the manifest location.**
-   - Put one `enumer.yaml` in the package directory when the enums belong to
-     that package. Package inference and default output paths then do the right
-     thing.
-   - For several packages, add one manifest per package and run `enumer
-     generate ./...`. Use `extends` for shared defaults.
-   - If the directory has no Go files yet, set `package` explicitly.
+   - Put `enumer.yaml` in the nearest project root. `enumer init` does this
+     automatically, even from a subdirectory; use `--local` only when you
+     deliberately want a package-local manifest.
+   - In a multi-module workspace, a module-root manifest takes precedence. A
+     workspace-root manifest is the fallback for modules without one; run
+     `enumer init` at the workspace root to create a workspace-level manifest.
+   - To generate an enum into a subpackage/module from the project-root
+     manifest, set the enum's `package` and `output`:
+
+     ```yaml
+     enums:
+       - name: Color
+         package: color
+         output: color/color_enum.go
+         values: [red, green, blue]
+     ```
+
+   - If the project root has no Go files, set `package` explicitly, or give
+     every enum its own `package`.
+   - Per-package manifests and `extends` remain supported for nested modules
+     and independent packages.
 3. **Write or update the manifest.** Preserve existing enums, features, comments
    and targets; make the smallest change that satisfies the request.
 4. **Generate and verify.** Run the generator, then build and test the package.
@@ -97,6 +116,7 @@ For CI, pin the version instead of using `@latest`. A tool dependency plus
 A minimal manifest in the package directory:
 
 ```yaml
+$schema: ./enumer.schema.json # optional; enumer init writes it
 version: 1
 package: order
 
@@ -115,6 +135,8 @@ feature set it contains `Status`, `StatusPending`, `StatusPaid`,
 `StatusNames` and `StatusValues`.
 
 - `version` is optional and defaults to `1`; include `version: 1` explicitly.
+- `$schema` and a sibling `enumer.schema.json` are editor metadata written by
+  `enumer init`. Preserve them when editing; the generator ignores `$schema`.
 - `package` is inferred from Go files in the manifest directory; set it
   explicitly when in doubt or when the directory has no Go files.
 - `enums` must contain at least one enum, and each enum at least one value.
